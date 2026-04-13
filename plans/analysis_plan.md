@@ -118,15 +118,18 @@ A divergence between the two is itself analytically interesting — e.g., if MOM
 
 ### Step 1: Pull Data via API
 
-Use `ipumspy` to submit an extract request for monthly CPS samples covering:
-- **Historical baseline**: 2005–2019
-- **COVID era** (flag separately, do not include in baseline): 2020–2022
-- **Recent period**: October 2023 – most recent available month
+`01_extract.py` should look for the API key in the environment first. If it isn't found, prompt the user to enter it at runtime rather than failing silently or hardcoding it.
 
 ```python
+import os
+import getpass
 from ipumspy import IpumsApiClient, CpsExtract
 
-client = IpumsApiClient(api_key=os.environ["IPUMS_API_KEY"])
+api_key = os.environ.get("IPUMS_API_KEY")
+if not api_key:
+    api_key = getpass.getpass("IPUMS_API_KEY not found in environment. Enter your API key: ")
+
+client = IpumsApiClient(api_key=api_key)
 
 extract = CpsExtract(
     samples=["cps2005_01m", ...],  # list all relevant monthly samples
@@ -138,6 +141,11 @@ client.submit_extract(extract)
 client.wait_for_extract(extract)  # async — may take minutes to hours
 client.download_extract(extract, download_dir="./data/raw")
 ```
+
+Sample coverage:
+- **Historical baseline**: 2005–2019
+- **COVID era** (flag separately, do not include in baseline): 2020–2022
+- **Recent period**: October 2023 – most recent available month
 
 ### Step 2: Build Matched Pairs (Both Methods)
 
@@ -223,22 +231,31 @@ Apply survey weights (`LNKFW1YWT` for YOY if available, `WTFINL` from T0 for MOM
 ```
 project/
 ├── PLAN.md                  ← this file
-├── .env                     ← IPUMS_API_KEY (gitignore this)
-├── data/
+├── .gitignore               ← must include /data and .env
+├── .env                     ← IPUMS_API_KEY (gitignored)
+├── data/                    ← gitignored — never pushed to git
 │   ├── raw/                 ← downloaded IPUMS extracts
 │   └── processed/
 │       ├── matched_mom.parquet   ← month-over-month pairs
 │       └── matched_yoy.parquet   ← year-over-year pairs
-├── notebooks/
-│   ├── 01_extract.ipynb     ← API pull
-│   ├── 02_match.ipynb       ← build both MOM and YOY matched pairs
-│   ├── 03_classify.ipynb    ← transition coding (applied to both)
-│   └── 04_analysis.ipynb    ← entry rates, comparisons, MOM vs YOY divergence
+├── scripts/
+│   ├── 01_extract.py        ← API pull
+│   ├── 02_match.py          ← build both MOM and YOY matched pairs
+│   ├── 03_classify.py       ← transition coding (applied to both)
+│   └── 04_analysis.py       ← entry rates, comparisons, MOM vs YOY divergence
 └── src/
     ├── match.py             ← matching logic for both methods
     ├── classify.py          ← transition classification
     └── rates.py             ← entry rate computation and rolling averages
 ```
+
+**`.gitignore` must include at minimum:**
+```
+data/
+.env
+```
+
+No raw or processed data files should ever be committed. If someone clones the repo, they run `01_extract.py` to pull their own copy of the data from IPUMS.
 
 ---
 
@@ -247,4 +264,4 @@ project/
 - Kauffman Indicators of Entrepreneurship: https://indicators.kauffman.org
 - Kauffman methodology paper describes the exact CPS variable approach this project replicates
 - IPUMS CPS variable documentation: https://cps.ipums.org/cps-action/variables/group
-- ipumspy docs: https://ipums.github.io/ipumspy
+- ipumspy docs: https://ipums.github.io/ipums
