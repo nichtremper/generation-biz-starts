@@ -171,7 +171,7 @@ Apply the same classification logic to both matched datasets:
 - `CLASSWKR == 14`: Self-employed, unincorporated (includes gig/freelance)
 - Run both combined and incorporated-only as separate columns — divergence between them is meaningful
 
-### Step 4: Compute  Entry Rates
+### Step 4: Compute Entry Rates
 
 **For MOM**: compute monthly entry rates, then apply a 3-month rolling average for visualization.
 
