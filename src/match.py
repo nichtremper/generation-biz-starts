@@ -15,9 +15,14 @@ def build_mom_pairs(lf: pl.LazyFrame) -> pl.DataFrame:
     Match persons at consecutive MISH values within a rotation stint.
 
     Runs all 6 MISH pairs as lazy joins, collects once at the end.
-    Validates that sex is identical and age differs by at most 1.
+    Validates:
+      - CPSIDP != 0 (excludes non-linkable persons)
+      - Sex is identical
+      - Age differs by 0 or 1
+      - T1 is exactly one calendar month after T0 (prevents cross-year spurious matches)
     """
     frames = []
+    lf = lf.filter(pl.col("CPSIDP") != 0)
 
     for mish_t0, mish_t1 in MOM_PAIRS:
         t0 = lf.filter(pl.col("MISH") == mish_t0)
@@ -30,6 +35,9 @@ def build_mom_pairs(lf: pl.LazyFrame) -> pl.DataFrame:
         validated = joined.filter(
             (pl.col("SEX_t0") == pl.col("SEX_t1"))
             & (pl.col("AGE_t1") - pl.col("AGE_t0")).is_between(0, 1)
+            # T1 must be exactly one calendar month after T0
+            & (pl.col("MONTH_t1") == (pl.col("MONTH_t0") % 12) + 1)
+            & (pl.col("YEAR_t1") == pl.col("YEAR_t0") + (pl.col("MONTH_t0") == 12).cast(pl.Int64))
         ).with_columns(pl.lit(f"{mish_t0}_{mish_t1}").alias("mish_pair"))
 
         frames.append(validated)
@@ -39,13 +47,19 @@ def build_mom_pairs(lf: pl.LazyFrame) -> pl.DataFrame:
 
 def build_yoy_pairs(lf: pl.LazyFrame) -> pl.DataFrame:
     """
-    Match persons at MISH=4 (T0) to MISH=16 (T1) — same calendar month, one year later.
+    Match persons at MISH=4 (T0) to MISH=8 (T1) — same calendar month, one year later.
 
-    Validates that sex is identical and age differs by exactly 1.
+    Validates:
+      - CPSIDP != 0 (excludes non-linkable persons)
+      - Sex is identical
+      - Age differs by 0 or 1
+      - T1 is the same calendar month exactly one year after T0
     Expect ~10-15% attrition from movers and non-response.
     """
+    lf = lf.filter(pl.col("CPSIDP") != 0)
+
     t0 = lf.filter(pl.col("MISH") == 4)
-    t1 = lf.filter(pl.col("MISH") == 8)  # IPUMS codes second stint as 5-8, not 13-16
+    t1 = lf.filter(pl.col("MISH") == 8)
 
     joined = t0.join(t1, on="CPSIDP", how="inner", suffix="_t1").rename(
         {c: f"{c}_t0" for c in t0.collect_schema().names() if c != "CPSIDP"}
@@ -53,5 +67,8 @@ def build_yoy_pairs(lf: pl.LazyFrame) -> pl.DataFrame:
 
     return joined.filter(
         (pl.col("SEX_t0") == pl.col("SEX_t1"))
-        & (pl.col("AGE_t1") - pl.col("AGE_t0") == 1)
+        & (pl.col("AGE_t1") - pl.col("AGE_t0")).is_between(0, 1)
+        # Same calendar month, exactly one year later
+        & (pl.col("MONTH_t1") == pl.col("MONTH_t0"))
+        & (pl.col("YEAR_t1") == pl.col("YEAR_t0") + 1)
     ).collect()
