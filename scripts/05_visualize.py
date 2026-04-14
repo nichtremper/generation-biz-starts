@@ -106,6 +106,9 @@ def plot_mom(df: pd.DataFrame) -> plt.Figure:
     fig.legend(handles, labels, loc="upper right", fontsize=8, framealpha=0.9,
                bbox_to_anchor=(0.98, 0.97))
 
+    fig.text(0.99, 0.01, "Source: IPUMS CPS, University of Minnesota",
+             ha="right", va="bottom", fontsize=7, color="0.5")
+
     return fig
 
 
@@ -154,6 +157,9 @@ def plot_yoy(df: pd.DataFrame) -> plt.Figure:
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper right", fontsize=8, framealpha=0.9,
                bbox_to_anchor=(0.98, 0.97))
+
+    fig.text(0.99, 0.01, "Source: IPUMS CPS, University of Minnesota",
+             ha="right", va="bottom", fontsize=7, color="0.5")
 
     return fig
 
