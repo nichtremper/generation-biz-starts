@@ -25,8 +25,8 @@ python scripts/04_analysis.py  # Compute entry rates, compare recent vs. histori
 
 **Two parallel matching methods** run throughout the pipeline:
 
-- **Method A — Month-Over-Month (MOM)**: Match persons at consecutive MISH values within a rotation stint (MISH 1→2, 2→3, 3→4, 13→14, 14→15, 15→16). Captures rapid/gig entry. High volatility. Output: `data/processed/matched_mom.parquet`
-- **Method B — Year-Over-Year (YOY)**: Match MISH=4 to MISH=16 for the same person (same calendar month, one year later). Captures durable business formation. Lower volatility, ~15-month lag. Output: `data/processed/matched_yoy.parquet`
+- **Method A — Month-Over-Month (MOM)**: Match persons at consecutive MISH values within a rotation stint (MISH 1→2, 2→3, 3→4, 5→6, 6→7, 7→8). IPUMS CPS codes the rotation as 1–8: first stint = 1–4, second stint = 5–8. Captures rapid/gig entry. High volatility. Output: `data/processed/matched_mom.parquet`
+- **Method B — Year-Over-Year (YOY)**: Match MISH=4 to MISH=8 for the same person (same calendar month, one year later). Captures durable business formation. Lower volatility, ~15-month lag. Output: `data/processed/matched_yoy.parquet`
 
 **Key logic modules** in `src/`:
 - `match.py` — matching logic for both methods, with validation (age ±1, sex must match)

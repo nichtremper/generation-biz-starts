@@ -6,9 +6,9 @@ import pandas as pd
 
 
 AGE_GROUPS = {
-    "35_and_under": (0, 35),
+    "35_and_under": (20, 35),
     "36_to_50": (36, 50),
-    "51_plus": (51, 120),
+    "51_plus": (51, 64),
 }
 
 # Baseline and analysis periods

@@ -7,9 +7,14 @@ Downloads raw extract to data/raw/.
 
 import getpass
 import os
+from datetime import datetime
 from pathlib import Path
 
 from ipumspy import IpumsApiClient, MicrodataExtract, readers
+
+
+def log(msg: str) -> None:
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
 
 RAW_DIR = Path(__file__).parent.parent / "data" / "raw"
 RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -77,9 +82,9 @@ def main():
 
     client = IpumsApiClient(api_key=api_key)
 
-    print("Resolving available CPS sample IDs from IPUMS...")
+    log("Resolving available CPS sample IDs from IPUMS...")
     samples = resolve_samples(client, TARGET_MONTHS)
-    print(f"  {len(samples)} samples resolved (of {len(TARGET_MONTHS)} targets).")
+    log(f"  {len(samples)} samples resolved (of {len(TARGET_MONTHS)} targets).")
 
     extract = MicrodataExtract(
         collection="cps",
@@ -88,16 +93,16 @@ def main():
         variables=VARIABLES,
     )
 
-    print(f"Submitting extract with {len(samples)} samples...")
+    log(f"Submitting extract with {len(samples)} samples...")
     client.submit_extract(extract)
-    print(f"Extract submitted. ID: {extract.extract_id}")
-    print("Waiting for extract to complete (this may take minutes to hours)...")
+    log(f"Extract submitted. ID: {extract.extract_id}")
+    log("Waiting for extract to complete (this may take minutes to hours)...")
 
     client.wait_for_extract(extract)
-    print("Extract ready. Downloading...")
+    log("Extract ready. Downloading...")
 
     client.download_extract(extract, download_dir=str(RAW_DIR))
-    print(f"Download complete. Files saved to: {RAW_DIR}")
+    log(f"Download complete. Files saved to: {RAW_DIR}")
 
 
 if __name__ == "__main__":
