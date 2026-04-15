@@ -1,18 +1,26 @@
 """
-Entry rate computation and aggregation for MOM and YOY matched pairs.
+Entry rate and persistence rate computation for MOM and YOY matched pairs.
 """
 
+import logging
 import pandas as pd
 
+log = logging.getLogger(__name__)
 
 AGE_GROUPS = {
-    "35_and_under": (20, 35),
-    "36_to_50": (36, 50),
-    "51_plus": (51, 64),
+    # Brackets match Kauffman New Entrepreneur Rate exactly
+    "20_to_34": (20, 34),
+    "35_to_44": (35, 44),
+    "45_to_54": (45, 54),
+    "55_to_64": (55, 64),
+    # Overall all-age group for direct comparison to published Kauffman rate
+    "20_to_64": (20, 64),
 }
 
 # Baseline and analysis periods
 BASELINE_YEARS = range(2005, 2020)
+# Robustness baseline: excludes Great Recession, starts post-GFC recovery
+BASELINE_YEARS_ROBUST = range(2010, 2020)
 COVID_YEARS = range(2020, 2023)
 RECENT_START = ("2023", "10")  # October 2023
 
@@ -114,35 +122,153 @@ def compute_yoy_rates(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(records).sort_values(["age_group", "quarter"])
 
 
-def compute_baseline_stats(rates: pd.DataFrame, period_col: str) -> pd.DataFrame:
+def compute_mom_persistence_rates(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Compute mean and SD of entry rates for the 2005-2019 baseline, controlling for seasonality.
+    Compute monthly SE persistence (1-month survival) rates from MOM matched pairs.
+
+    Persistence rate = fraction of SE workers at T0 still SE at T1.
+    Uses WTFINL_t0 as the survey weight. Returns a tidy DataFrame with
+    columns: period, age_group, persistence_rate, persistence_rate_inc, n_se.
+    Applies a 3-month rolling average per age group for visualization.
+    """
+    df = df.copy()
+    df["period"] = pd.to_datetime(
+        df["YEAR_t0"].astype(str) + "-" + df["MONTH_t0"].astype(str).str.zfill(2)
+    )
+
+    records = []
+    for group, (age_min, age_max) in AGE_GROUPS.items():
+        age_mask = df["AGE_t0"].between(age_min, age_max)
+        subset = df[age_mask]
+
+        for period, grp in subset.groupby("period"):
+            rate = _entry_rate(grp, "continuing", "se_t0", "WTFINL_t0")
+            rate_inc = _entry_rate(grp, "continuing_inc", "se_inc_t0", "WTFINL_t0")
+            n_se = int(grp["se_t0"].sum())
+            records.append({
+                "period": period,
+                "age_group": group,
+                "persistence_rate": rate,
+                "persistence_rate_inc": rate_inc,
+                "n_se": n_se,
+            })
+
+    result = pd.DataFrame(records).sort_values(["age_group", "period"])
+
+    result["persistence_rate_3mo"] = (
+        result.groupby("age_group")["persistence_rate"]
+        .transform(lambda s: s.rolling(3, min_periods=1).mean())
+    )
+    result["persistence_rate_inc_3mo"] = (
+        result.groupby("age_group")["persistence_rate_inc"]
+        .transform(lambda s: s.rolling(3, min_periods=1).mean())
+    )
+
+    return result
+
+
+def compute_yoy_persistence_rates(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute quarterly SE persistence (12-month survival) rates from YOY matched pairs.
+
+    Persistence rate = fraction of SE workers at MISH=4 still SE at MISH=8 (~1 year later).
+    Uses LNKFW1YWT_t1 as the survey weight, falling back to WTFINL_t0 if unavailable.
+    Returns a tidy DataFrame with columns: quarter, age_group, persistence_rate,
+    persistence_rate_inc, n_se.
+    """
+    df = df.copy()
+
+    if "LNKFW1YWT_t1" in df.columns:
+        df["weight"] = df["LNKFW1YWT_t1"].where(df["LNKFW1YWT_t1"] > 0, df["WTFINL_t0"])
+    else:
+        df["weight"] = df["WTFINL_t0"]
+
+    df["quarter"] = pd.PeriodIndex(
+        pd.to_datetime(
+            df["YEAR_t1"].astype(str) + "-" + df["MONTH_t1"].astype(str).str.zfill(2)
+        ),
+        freq="Q",
+    )
+
+    records = []
+    for group, (age_min, age_max) in AGE_GROUPS.items():
+        age_mask = df["AGE_t0"].between(age_min, age_max)
+        subset = df[age_mask]
+
+        for quarter, grp in subset.groupby("quarter"):
+            rate = _entry_rate(grp, "continuing", "se_t0", "weight")
+            rate_inc = _entry_rate(grp, "continuing_inc", "se_inc_t0", "weight")
+            n_se = int(grp["se_t0"].sum())
+            records.append({
+                "quarter": quarter,
+                "age_group": group,
+                "persistence_rate": rate,
+                "persistence_rate_inc": rate_inc,
+                "n_se": n_se,
+            })
+
+    return pd.DataFrame(records).sort_values(["age_group", "quarter"])
+
+
+def compute_baseline_stats(
+    rates: pd.DataFrame, period_col: str, baseline_years=None, rate_col: str = "entry_rate"
+) -> pd.DataFrame:
+    """
+    Compute mean and SD of entry rates for a baseline window, controlling for seasonality.
 
     For MOM rates: groups by (age_group, month). For YOY rates: groups by (age_group, quarter-of-year).
-    Returns a DataFrame with baseline_mean and baseline_sd for each seasonal bucket.
+    Returns a DataFrame with baseline_mean, baseline_sd, and n_obs for each seasonal bucket.
+
+    Args:
+        rates: Output of a compute_*_rates function.
+        period_col: "period" for MOM, "quarter" for YOY.
+        baseline_years: Iterable of years to include in the baseline.
+            Defaults to BASELINE_YEARS (2005–2019). Pass BASELINE_YEARS_ROBUST
+            (2010–2019) for the post-GFC robustness check.
+        rate_col: Name of the rate column to aggregate. Defaults to "entry_rate".
+            Pass "persistence_rate" for persistence rate DataFrames.
     """
+    if baseline_years is None:
+        baseline_years = BASELINE_YEARS
+
     if period_col == "period":
-        baseline = rates[rates[period_col].dt.year.isin(BASELINE_YEARS)].copy()
+        baseline = rates[rates[period_col].dt.year.isin(baseline_years)].copy()
         baseline["season"] = baseline[period_col].dt.month
         group_cols = ["age_group", "season"]
     else:
-        baseline = rates[rates[period_col].dt.year.isin(BASELINE_YEARS)].copy()
+        baseline = rates[rates[period_col].dt.year.isin(baseline_years)].copy()
         baseline["season"] = baseline[period_col].dt.quarter
         group_cols = ["age_group", "season"]
 
     stats = (
-        baseline.groupby(group_cols)["entry_rate"]
-        .agg(baseline_mean="mean", baseline_sd="std")
+        baseline.groupby(group_cols)[rate_col]
+        .agg(baseline_mean="mean", baseline_sd="std", n_obs="count")
         .reset_index()
     )
+
+    # Diagnostic: flag sparse or NaN buckets so March-like gaps are visible
+    sparse = stats[(stats["n_obs"] < 5) | stats["baseline_mean"].isna()]
+    if not sparse.empty:
+        for _, row in sparse.iterrows():
+            log.warning(
+                "Sparse baseline bucket: age_group=%s season=%s n_obs=%d "
+                "baseline_mean=%s — rates for this bucket cannot be compared to baseline.",
+                row["age_group"], row["season"], row["n_obs"], row["baseline_mean"],
+            )
+
     return stats
 
 
 def flag_recent_vs_baseline(
-    rates: pd.DataFrame, baseline_stats: pd.DataFrame, period_col: str
+    rates: pd.DataFrame, baseline_stats: pd.DataFrame, period_col: str,
+    rate_col: str = "entry_rate",
 ) -> pd.DataFrame:
     """
-    Join baseline stats onto recent-period rates and flag quarters >1 SD from baseline mean.
+    Join baseline stats onto recent-period rates and flag periods >1 SD from baseline mean.
+
+    Args:
+        rate_col: Name of the rate column to compare. Defaults to "entry_rate".
+            Pass "persistence_rate" for persistence rate DataFrames.
     """
     recent = rates[
         rates[period_col] >= pd.Period("2023Q4", freq="Q")
@@ -156,7 +282,7 @@ def flag_recent_vs_baseline(
         recent["season"] = recent[period_col].dt.quarter
 
     merged = recent.merge(baseline_stats, on=["age_group", "season"], how="left")
-    merged["z_score"] = (merged["entry_rate"] - merged["baseline_mean"]) / merged["baseline_sd"]
+    merged["z_score"] = (merged[rate_col] - merged["baseline_mean"]) / merged["baseline_sd"]
     merged["above_baseline"] = merged["z_score"] > 1
     merged["below_baseline"] = merged["z_score"] < -1
 

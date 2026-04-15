@@ -7,10 +7,12 @@ Downloads raw extract to data/raw/.
 
 import getpass
 import os
+import time
 from datetime import datetime
 from pathlib import Path
 
 from ipumspy import IpumsApiClient, MicrodataExtract, readers
+from ipumspy.api.exceptions import IpumsApiException
 
 
 def log(msg: str) -> None:
@@ -70,10 +72,20 @@ VARIABLES = [
     "EDUC",
     "RACE",
     "IND",
+    # Kauffman comparability: hours worked filter (≥15 hrs/week at T1).
+    "UHRSWORKT",   # usual hours worked per week (total, all jobs)
 ]
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--resume-id", type=int, default=None,
+        help="Resume waiting on an already-submitted extract by ID (skips submission)."
+    )
+    args = parser.parse_args()
+
     api_key = os.environ.get("IPUMS_API_KEY")
     if not api_key:
         api_key = getpass.getpass(
@@ -82,23 +94,38 @@ def main():
 
     client = IpumsApiClient(api_key=api_key)
 
-    log("Resolving available CPS sample IDs from IPUMS...")
-    samples = resolve_samples(client, TARGET_MONTHS)
-    log(f"  {len(samples)} samples resolved (of {len(TARGET_MONTHS)} targets).")
+    if args.resume_id:
+        log(f"Resuming extract ID: {args.resume_id} (skipping submission)...")
+        extract = client.get_extract(args.resume_id, collection="cps")
+    else:
+        log("Resolving available CPS sample IDs from IPUMS...")
+        samples = resolve_samples(client, TARGET_MONTHS)
+        log(f"  {len(samples)} samples resolved (of {len(TARGET_MONTHS)} targets).")
 
-    extract = MicrodataExtract(
-        collection="cps",
-        description="Generation biz starts analysis — full sample pull",
-        samples=samples,
-        variables=VARIABLES,
-    )
+        extract = MicrodataExtract(
+            collection="cps",
+            description="Generation biz starts analysis — full sample pull",
+            samples=samples,
+            variables=VARIABLES,
+        )
 
-    log(f"Submitting extract with {len(samples)} samples...")
-    client.submit_extract(extract)
-    log(f"Extract submitted. ID: {extract.extract_id}")
+        log(f"Submitting extract with {len(samples)} samples...")
+        client.submit_extract(extract)
+        log(f"Extract submitted. ID: {extract.extract_id}")
+
     log("Waiting for extract to complete (this may take minutes to hours)...")
 
-    client.wait_for_extract(extract)
+    while True:
+        try:
+            client.wait_for_extract(extract)
+            break
+        except IpumsApiException as e:
+            if "timed out" in str(e).lower() or "connection aborted" in str(e).lower():
+                log("Connection timed out while polling — retrying in 30 seconds...")
+                time.sleep(30)
+            else:
+                raise
+
     log("Extract ready. Downloading...")
 
     client.download_extract(extract, download_dir=str(RAW_DIR))

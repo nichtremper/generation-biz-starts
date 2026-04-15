@@ -1,17 +1,22 @@
 """
-Step 5: Time-series plots of SE entry rates with 95% confidence intervals.
+Step 5: Time-series plots of SE entry and persistence rates with 95% confidence intervals.
 
 Reads:
   data/processed/rates_mom.parquet
   data/processed/rates_yoy.parquet
+  data/processed/persistence_mom.parquet
+  data/processed/persistence_yoy.parquet
 
 Saves to:
   figures/entry_rates_mom.png
   figures/entry_rates_yoy.png
+  figures/persistence_rates_mom.png
+  figures/persistence_rates_yoy.png
 
-CI method: normal approximation using unweighted n_at_risk as the effective
-sample size. Does not correct for survey design effects; treat bands as
-indicative, not formal.
+CI method: normal approximation with a conservative design-effect correction
+(DESIGN_EFFECT = 1.5) to account for CPS stratified cluster sampling. True
+DEFF is typically 1.5–2.0 for SE variables; this is a scalar approximation
+since PSU/stratum variables are not in the extract.
 """
 
 from datetime import datetime
@@ -34,12 +39,17 @@ COVID_END   = pd.Timestamp("2022-12-31")
 RECENT_START = pd.Timestamp("2023-10-01")
 
 AGE_LABELS = {
-    "35_and_under": "Age 20–35",
-    "36_to_50":     "Age 36–50",
-    "51_plus":      "Age 51–64",
+    "20_to_34": "Age 20–34",
+    "35_to_44": "Age 35–44",
+    "45_to_54": "Age 45–54",
+    "55_to_64": "Age 55–64",
+    "20_to_64": "Age 20–64 (all)",
 }
 
 Z95 = 1.96
+# Conservative design-effect scalar for CPS clustered sampling (DEFF typically 1.5–2.0).
+# Applied as se = sqrt(DEFF * p*(1-p)/n) since PSU/stratum variables are not extracted.
+DESIGN_EFFECT = 1.5
 
 
 def log(msg: str) -> None:
@@ -47,8 +57,11 @@ def log(msg: str) -> None:
 
 
 def ci_bounds(rate: pd.Series, n: pd.Series):
-    """Return (lower, upper) 95% CI series for a binomial proportion."""
-    se = np.sqrt(rate * (1 - rate) / n.clip(lower=1))
+    """Return (lower, upper) 95% CI series for a binomial proportion.
+
+    Applies DESIGN_EFFECT scalar to correct for CPS clustered sampling.
+    """
+    se = np.sqrt(DESIGN_EFFECT * rate * (1 - rate) / n.clip(lower=1))
     return (rate - Z95 * se).clip(lower=0), rate + Z95 * se
 
 
@@ -59,12 +72,12 @@ def shade_background(ax, x_start, x_end):
 
 def plot_mom(df: pd.DataFrame) -> plt.Figure:
     fig, axes = plt.subplots(
-        len(AGE_LABELS), 1, figsize=(13, 11), sharex=True, sharey=True,
+        len(AGE_LABELS), 1, figsize=(13, 17), sharex=True, sharey=True,
         gridspec_kw={"hspace": 0.35},
     )
     fig.suptitle(
         "Self-Employment Entry Rate — Month-Over-Month (CPS)\n"
-        "3-month rolling average  |  shaded band = 95% CI on monthly estimate",
+        "3-month rolling average  |  shaded band = 95% CI (design-effect corrected, DEFF=1.5)",
         fontsize=11,
     )
 
@@ -118,12 +131,12 @@ def plot_yoy(df: pd.DataFrame) -> plt.Figure:
     df["date"] = df["quarter"].dt.to_timestamp()
 
     fig, axes = plt.subplots(
-        len(AGE_LABELS), 1, figsize=(13, 11), sharex=True, sharey=True,
+        len(AGE_LABELS), 1, figsize=(13, 17), sharex=True, sharey=True,
         gridspec_kw={"hspace": 0.35},
     )
     fig.suptitle(
         "Self-Employment Entry Rate — Year-Over-Year (CPS, MISH 4→8)\n"
-        "Quarterly  |  shaded band = 95% CI",
+        "Quarterly  |  shaded band = 95% CI (design-effect corrected, DEFF=1.5)",
         fontsize=11,
     )
 
@@ -164,6 +177,100 @@ def plot_yoy(df: pd.DataFrame) -> plt.Figure:
     return fig
 
 
+def plot_persistence_mom(df: pd.DataFrame) -> plt.Figure:
+    fig, axes = plt.subplots(
+        len(AGE_LABELS), 1, figsize=(13, 17), sharex=True, sharey=True,
+        gridspec_kw={"hspace": 0.35},
+    )
+    fig.suptitle(
+        "Self-Employment 1-Month Persistence Rate — Month-Over-Month (CPS)\n"
+        "Fraction of SE workers remaining SE the following month  |  3-month rolling average",
+        fontsize=11,
+    )
+
+    for ax, (group, label) in zip(axes, AGE_LABELS.items()):
+        sub = df[df["age_group"] == group].sort_values("period").copy()
+        lo, hi = ci_bounds(sub["persistence_rate"], sub["n_se"])
+
+        shade_background(ax, COVID_START, COVID_END)
+        ax.axvline(RECENT_START, color="0.4", linewidth=0.8, linestyle=":", zorder=2)
+
+        ax.fill_between(sub["period"], lo * 100, hi * 100,
+                        color="steelblue", alpha=0.15, zorder=1)
+        ax.plot(sub["period"], sub["persistence_rate"] * 100,
+                color="steelblue", linewidth=0.5, alpha=0.35, zorder=2)
+        ax.plot(sub["period"], sub["persistence_rate_3mo"] * 100,
+                color="steelblue", linewidth=1.8, zorder=3, label="Combined SE (3mo avg)")
+        ax.plot(sub["period"], sub["persistence_rate_inc_3mo"] * 100,
+                color="darkorange", linewidth=1.4, linestyle="--", zorder=3,
+                label="Incorporated only (3mo avg)")
+
+        ax.set_title(label, fontsize=9, loc="left", pad=3)
+        ax.set_ylabel("Persistence rate (%)", fontsize=8)
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0f}%"))
+        ax.tick_params(axis="both", labelsize=8)
+
+    axes[-1].xaxis.set_major_locator(mdates.YearLocator(2))
+    axes[-1].xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    axes[-1].tick_params(axis="x", labelsize=8)
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper right", fontsize=8, framealpha=0.9,
+               bbox_to_anchor=(0.98, 0.97))
+    fig.text(0.99, 0.01, "Source: IPUMS CPS, University of Minnesota",
+             ha="right", va="bottom", fontsize=7, color="0.5")
+
+    return fig
+
+
+def plot_persistence_yoy(df: pd.DataFrame) -> plt.Figure:
+    df = df.copy()
+    df["date"] = df["quarter"].dt.to_timestamp()
+
+    fig, axes = plt.subplots(
+        len(AGE_LABELS), 1, figsize=(13, 17), sharex=True, sharey=True,
+        gridspec_kw={"hspace": 0.35},
+    )
+    fig.suptitle(
+        "Self-Employment 12-Month Persistence Rate — Year-Over-Year (CPS, MISH 4→8)\n"
+        "Fraction of SE workers at MISH=4 still SE at MISH=8 (~1 year later)  |  Quarterly",
+        fontsize=11,
+    )
+
+    for ax, (group, label) in zip(axes, AGE_LABELS.items()):
+        sub = df[df["age_group"] == group].sort_values("date").copy()
+        lo, hi = ci_bounds(sub["persistence_rate"], sub["n_se"])
+
+        shade_background(ax, COVID_START, COVID_END)
+        ax.axvline(RECENT_START, color="0.4", linewidth=0.8, linestyle=":", zorder=2)
+
+        ax.fill_between(sub["date"], lo * 100, hi * 100,
+                        color="steelblue", alpha=0.2, zorder=1)
+        ax.plot(sub["date"], sub["persistence_rate"] * 100,
+                color="steelblue", linewidth=1.8, marker="o", markersize=3,
+                zorder=3, label="Combined SE")
+        ax.plot(sub["date"], sub["persistence_rate_inc"] * 100,
+                color="darkorange", linewidth=1.4, linestyle="--", marker="o", markersize=3,
+                zorder=3, label="Incorporated only")
+
+        ax.set_title(label, fontsize=9, loc="left", pad=3)
+        ax.set_ylabel("Persistence rate (%)", fontsize=8)
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0f}%"))
+        ax.tick_params(axis="both", labelsize=8)
+
+    axes[-1].xaxis.set_major_locator(mdates.YearLocator(2))
+    axes[-1].xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    axes[-1].tick_params(axis="x", labelsize=8)
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper right", fontsize=8, framealpha=0.9,
+               bbox_to_anchor=(0.98, 0.97))
+    fig.text(0.99, 0.01, "Source: IPUMS CPS, University of Minnesota",
+             ha="right", va="bottom", fontsize=7, color="0.5")
+
+    return fig
+
+
 def main():
     log("Reading MOM rates...")
     mom = pd.read_parquet(PROCESSED_DIR / "rates_mom.parquet")
@@ -179,6 +286,24 @@ def main():
     log(f"  {len(yoy):,} rows across {yoy['age_group'].nunique()} age groups.")
     fig = plot_yoy(yoy)
     out = FIGURES_DIR / "entry_rates_yoy.png"
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    log(f"  Saved: {out}")
+    plt.close(fig)
+
+    log("Reading MOM persistence rates...")
+    mom_p = pd.read_parquet(PROCESSED_DIR / "persistence_mom.parquet")
+    log(f"  {len(mom_p):,} rows across {mom_p['age_group'].nunique()} age groups.")
+    fig = plot_persistence_mom(mom_p)
+    out = FIGURES_DIR / "persistence_rates_mom.png"
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    log(f"  Saved: {out}")
+    plt.close(fig)
+
+    log("Reading YOY persistence rates...")
+    yoy_p = pd.read_parquet(PROCESSED_DIR / "persistence_yoy.parquet")
+    log(f"  {len(yoy_p):,} rows across {yoy_p['age_group'].nunique()} age groups.")
+    fig = plot_persistence_yoy(yoy_p)
+    out = FIGURES_DIR / "persistence_rates_yoy.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     log(f"  Saved: {out}")
     plt.close(fig)

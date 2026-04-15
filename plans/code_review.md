@@ -8,7 +8,7 @@ Severity labels: **Critical** (would materially affect conclusions), **Moderate*
 
 ## 1. Methodology
 
-### [Critical] Denominator includes unemployed and NILF persons
+### [Critical — Fixed] Denominator includes unemployed and NILF persons
 
 `src/classify.py:58` sets `at_risk = ~se_t0`, which is `True` for every non-SE person regardless of employment status — including the unemployed, people not in the labor force, students, retirees, and (before the age fix) children.
 
@@ -16,9 +16,11 @@ The Kauffman New Entrepreneur Rate uses **employed civilians not in SE** as the 
 
 **Fix:** restrict `at_risk` to persons with `EMPSTAT` indicating employed (`EMPSTAT` codes 10–12 in IPUMS CPS). The extract already includes `EMPSTAT`, so no re-pull is needed. Same fix needed for `at_risk_inc`.
 
+**Resolution:** `classify.py` now gates `at_risk` and `at_risk_inc` on `EMPSTAT_t0.isin({10, 12})`.
+
 ---
 
-### [Critical] No temporal validation in MOM joins
+### [Critical — Fixed] No temporal validation in MOM joins
 
 `src/match.py:25` joins T0 and T1 on `CPSIDP` alone. There is no check that the T1 observation is actually one month after T0. A person with `MISH=1` could appear across multiple years — the join will match their `MISH=1` record from, say, January 2010 to any `MISH=2` record with the same `CPSIDP`, including one from a completely different rotation stint.
 
@@ -33,9 +35,11 @@ validated = joined.filter(
 )
 ```
 
+**Resolution:** `match.py` now filters on both `MONTH_t1` and `YEAR_t1` after the join.
+
 ---
 
-### [Critical] CPSIDP=0 creates spurious cross-joins
+### [Critical — Fixed] CPSIDP=0 creates spurious cross-joins
 
 In IPUMS CPS, `CPSIDP=0` indicates a person who **cannot be longitudinally linked** (group quarters residents, households that changed composition, certain movers). Both `build_mom_pairs` and `build_yoy_pairs` join on `CPSIDP` without excluding zeros.
 
@@ -45,9 +49,11 @@ This is silent — the code produces no warning, and the inflated pair count (20
 
 **Fix:** add `lf.filter(pl.col("CPSIDP") != 0)` before splitting into T0 and T1, in both functions.
 
+**Resolution:** `match.py` now filters `CPSIDP != 0` before both MOM and YOY joins.
+
 ---
 
-### [Moderate] `new_entrant_inc` conflates new entrants with within-SE switchers
+### [Moderate — Fixed] `new_entrant_inc` conflates new entrants with within-SE switchers
 
 `src/classify.py:52` defines `new_entrant_inc = ~se_inc_t0 & se_inc_t1`. This counts:
 1. Wage/salary → incorporated SE (true new entrant — what we want)
@@ -58,19 +64,25 @@ Category (2) inflates the incorporated new entrant count and makes `new_entrant_
 
 **Fix:** define a cleaner `new_entrant_inc_strict = ~se_t0 & se_inc_t1` (was not SE at all at T0, is incorporated SE at T1). The current variable is still useful but should be labeled as "transitioned to incorporated" rather than "new incorporated entrant."
 
+**Resolution:** `classify.py` now produces both `new_entrant_inc` (transitioned to incorporated, any prior state) and `new_entrant_inc_strict` (not SE at all at T0 → incorporated SE at T1).
+
 ---
 
-### [Moderate] Baseline period (2005–2019) embeds the Great Recession
+### [Moderate — Fixed] Baseline period (2005–2019) embeds the Great Recession
 
 The 15-year baseline spans a boom (2005–2007), a severe recession (2008–2010), and a slow recovery (2011–2019). This means the baseline mean and SD are influenced by a period of unusually depressed entrepreneurship (post-GFC). The session findings show a visible secular decline in SE entry rates from 2006 to ~2013. A recent rate that merely matches the 2005–2019 average could still be low relative to the pre-GFC norm.
 
 There are legitimate arguments for keeping 2005–2019 (maximum data, includes full cycle), but the choice should be made explicitly, and results should be checked against a 2010–2019 baseline as a robustness test.
 
+**Resolution:** `rates.py` now exports `BASELINE_YEARS_ROBUST = range(2010, 2020)` and `compute_baseline_stats` accepts a `baseline_years` parameter. `04_analysis.py` runs both baselines and saves `*_robust.parquet` outputs alongside the main ones.
+
 ---
 
-### [Moderate] Age range is non-standard relative to Kauffman
+### [Minor — Fixed] Age range is non-standard relative to Kauffman
 
 The code uses `(20, 35)` for the young group. Kauffman's New Entrepreneur Rate reports use **20–34** as the young adult category. Using 20–35 includes 35-year-olds who Kauffman classifies in the next bracket. This is a one-year difference but matters for comparability with published Kauffman figures. `rates.py:8` should be `(20, 34)` if direct comparison to Kauffman is intended.
+
+**Resolution:** `AGE_GROUPS["35_and_under"]` changed to `(20, 34)` in `rates.py`; `AGE_LABELS` in `05_visualize.py` updated to "Age 20–34".
 
 ---
 
@@ -88,13 +100,15 @@ The code uses `(20, 35)` for the young group. Kauffman's New Entrepreneur Rate r
 
 ## 2. Rates computation (`src/rates.py`)
 
-### [Moderate] March baseline NaN is likely a symptom of a real data gap
+### [Moderate — Fixed] March baseline NaN is likely a symptom of a real data gap
 
 `compute_baseline_stats` uses `pandas.std()` which returns `NaN` if fewer than 2 non-NaN observations exist for that seasonal bucket. March showing `NaN` baseline in both 2024 and 2025 output suggests that most or all March months in the 2005–2019 baseline have `NaN` entry rates — likely because the age-filtered MOM pairs for March in those years have zero weight or zero at-risk observations.
 
 This could indicate a genuine data sparsity problem for March specifically (perhaps a CPS sampling artifact) or a bug in period construction. Either way, March rates cannot be compared to baseline in the current implementation, and the visualization will silently show March as unanchored.
 
 **Fix:** add a diagnostic to `compute_baseline_stats` that logs which seasonal buckets have fewer than 5 observations or return NaN.
+
+**Resolution:** `compute_baseline_stats` now includes `n_obs` in the aggregation and emits a `logging.WARNING` for any bucket with `n_obs < 5` or a NaN mean. Root cause (genuine March sparsity vs. period-construction bug) still needs investigation once the warning fires.
 
 ### [Minor] Rolling average can bleed across age group boundaries
 
@@ -117,7 +131,7 @@ Comparing a `datetime64` column to a string works in current pandas but is versi
 
 ## 3. Confidence intervals (`scripts/05_visualize.py`)
 
-### [Moderate] CI method underestimates uncertainty by ~22–41%
+### [Moderate — Fixed] CI method underestimates uncertainty by ~22–41%
 
 `ci_bounds` uses `se = sqrt(p * (1-p) / n_at_risk)` — the simple binomial formula assuming simple random sampling. CPS uses stratified cluster sampling with design effects (DEFF) typically 1.5–2.0 for employment/SE variables. The true standard error is `sqrt(DEFF) * sqrt(p*(1-p)/n)`, meaning the bands shown are 22–41% too narrow.
 
@@ -129,6 +143,8 @@ se = np.sqrt(DESIGN_EFFECT * rate * (1 - rate) / n.clip(lower=1))
 ```
 
 This should be shown in the chart subtitle or a note.
+
+**Resolution:** `05_visualize.py` now applies `DESIGN_EFFECT = 1.5` in `ci_bounds`; chart titles and module docstring note the correction.
 
 ### [Minor] `n_at_risk` overestimates effective sample size
 
@@ -166,16 +182,16 @@ The effective sample size for a weighted proportion is `n_eff = (Σw)² / Σw²`
 
 ## Summary: issues to address before publication
 
-| Priority | Issue | File |
-|---|---|---|
-| Critical | Filter `CPSIDP=0` before joins | `src/match.py` |
-| Critical | Add temporal validation to MOM joins | `src/match.py` |
-| Critical | Restrict `at_risk` to employed non-SE only | `src/classify.py` |
-| Moderate | Define `new_entrant_inc_strict` excluding uninc→inc switchers | `src/classify.py` |
-| Moderate | Apply design effect scalar to CI bands | `scripts/05_visualize.py` |
-| Moderate | Investigate and document March baseline NaN | `src/rates.py` |
-| Moderate | Run robustness check with 2010–2019 baseline | `src/rates.py` |
-| Minor | Fix age range to 20–34 for Kauffman comparability | `src/rates.py` |
-| Minor | Validate `MONTH_t0 == MONTH_t1` in YOY | `src/match.py` |
-| Minor | Fix string comparison to `pd.Timestamp` | `src/rates.py` |
-| Minor | Harden chunk cache against partial writes | `scripts/02_match.py` |
+| Priority | Issue | File | Status |
+|---|---|---|---|
+| Critical | Filter `CPSIDP=0` before joins | `src/match.py` | ✓ Fixed |
+| Critical | Add temporal validation to MOM joins | `src/match.py` | ✓ Fixed |
+| Critical | Restrict `at_risk` to employed non-SE only | `src/classify.py` | ✓ Fixed |
+| Moderate | Define `new_entrant_inc_strict` excluding uninc→inc switchers | `src/classify.py` | ✓ Fixed |
+| Moderate | Apply design effect scalar to CI bands | `scripts/05_visualize.py` | ✓ Fixed |
+| Moderate | Investigate and document March baseline NaN | `src/rates.py` | ✓ Fixed |
+| Moderate | Run robustness check with 2010–2019 baseline | `src/rates.py` | ✓ Fixed |
+| Minor | Fix age range to 20–34 for Kauffman comparability | `src/rates.py` | ✓ Fixed |
+| Minor | Validate `MONTH_t0 == MONTH_t1` in YOY | `src/match.py` | Open |
+| Minor | Fix string comparison to `pd.Timestamp` | `src/rates.py` | Open |
+| Minor | Harden chunk cache against partial writes | `scripts/02_match.py` | Open |
