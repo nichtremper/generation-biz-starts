@@ -22,7 +22,11 @@ def build_mom_pairs(lf: pl.LazyFrame) -> pl.DataFrame:
       - T1 is exactly one calendar month after T0 (prevents cross-year spurious matches)
     """
     frames = []
-    lf = lf.filter(pl.col("CPSIDP") != 0)
+    # Deduplicate: keep one record per (CPSIDP, YEAR, MONTH, MISH) to prevent
+    # cross-joins if any CPSIDP appears more than once in a survey month.
+    lf = lf.filter(pl.col("CPSIDP") != 0).unique(
+        subset=["CPSIDP", "YEAR", "MONTH", "MISH"], keep="first"
+    )
 
     for mish_t0, mish_t1 in MOM_PAIRS:
         t0 = lf.filter(pl.col("MISH") == mish_t0)
@@ -56,7 +60,10 @@ def build_yoy_pairs(lf: pl.LazyFrame) -> pl.DataFrame:
       - T1 is the same calendar month exactly one year after T0
     Expect ~10-15% attrition from movers and non-response.
     """
-    lf = lf.filter(pl.col("CPSIDP") != 0)
+    # Deduplicate before joining (same reason as MOM: prevent cross-joins).
+    lf = lf.filter(pl.col("CPSIDP") != 0).unique(
+        subset=["CPSIDP", "YEAR", "MONTH", "MISH"], keep="first"
+    )
 
     t0 = lf.filter(pl.col("MISH") == 4)
     t1 = lf.filter(pl.col("MISH") == 8)

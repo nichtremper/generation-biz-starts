@@ -3,6 +3,7 @@ Entry rate and persistence rate computation for MOM and YOY matched pairs.
 """
 
 import logging
+import numpy as np
 import pandas as pd
 
 log = logging.getLogger(__name__)
@@ -23,6 +24,31 @@ BASELINE_YEARS = range(2005, 2020)
 BASELINE_YEARS_ROBUST = range(2010, 2020)
 COVID_YEARS = range(2020, 2023)
 RECENT_START = ("2023", "10")  # October 2023
+
+
+def _newey_west_var_of_mean(series: np.ndarray) -> float:
+    """
+    Newey-West HAC variance estimate for the mean of `series`.
+
+    Accounts for autocorrelation in a time series when estimating the
+    precision of the mean. Returns Var(mean), not SD or SE.
+
+    Bandwidth L = floor(T^(1/3)) per Newey & West (1987) recommendation.
+    Falls back to classical variance / n for very short series (T < 4).
+    """
+    x = np.asarray(series, dtype=float)
+    x = x[~np.isnan(x)]
+    T = len(x)
+    if T < 4:
+        return float(np.var(x, ddof=1)) / max(T, 1)
+    bandwidth = max(1, int(np.floor(T ** (1 / 3))))
+    e = x - x.mean()
+    s0 = np.dot(e, e) / T
+    nw_sum = s0
+    for k in range(1, bandwidth + 1):
+        sk = np.dot(e[k:], e[:-k]) / T
+        nw_sum += 2 * (1.0 - k / (bandwidth + 1)) * sk
+    return max(nw_sum, 0.0) / T
 
 
 def _entry_rate(df: pd.DataFrame, entrant_col: str, at_risk_col: str, weight_col: str) -> float:
@@ -53,7 +79,10 @@ def compute_mom_rates(df: pd.DataFrame) -> pd.DataFrame:
 
         for period, grp in subset.groupby("period"):
             rate = _entry_rate(grp, "new_entrant", "at_risk", "WTFINL_t0")
-            rate_inc = _entry_rate(grp, "new_entrant_inc", "at_risk_inc", "WTFINL_t0")
+            # Use strict incorporated definition: ~se_t0 & se_inc_t1 with at_risk
+            # denominator (employed non-SE). Excludes uninc→inc restructurings so
+            # entry_rate_inc measures pure new incorporated business formation.
+            rate_inc = _entry_rate(grp, "new_entrant_inc_strict", "at_risk", "WTFINL_t0")
             n_at_risk = grp["at_risk"].sum()
             records.append({
                 "period": period,
@@ -109,7 +138,8 @@ def compute_yoy_rates(df: pd.DataFrame) -> pd.DataFrame:
 
         for quarter, grp in subset.groupby("quarter"):
             rate = _entry_rate(grp, "new_entrant", "at_risk", "weight")
-            rate_inc = _entry_rate(grp, "new_entrant_inc", "at_risk_inc", "weight")
+            # Strict incorporated definition: see compute_mom_rates for rationale.
+            rate_inc = _entry_rate(grp, "new_entrant_inc_strict", "at_risk", "weight")
             n_at_risk = grp["at_risk"].sum()
             records.append({
                 "quarter": quarter,
@@ -344,6 +374,44 @@ def compute_baseline_stats(
         .reset_index()
     )
 
+    # Newey-West HAC SD: corrects for autocorrelation in the baseline series so
+    # that z-scores for a single new observation reflect the true spread of the
+    # process (not just the precision of the estimated mean).
+    #
+    # For an AR(1) process with ρ > 0, positive autocorrelation means consecutive
+    # observations are more similar than independent draws — the effective sample
+    # size is reduced, and the estimated SD of the distribution is upward-biased.
+    # NW corrects this: baseline_nw_sd = √(nw_sum) where
+    #   nw_sum = γ_0 + 2 Σ_{k=1}^{L} w_k γ_k  (NW long-run variance)
+    # This is LARGER than baseline_sd for ρ > 0, producing SMALLER (conservative)
+    # z-scores. The SE of the mean baseline_nw_se = √(nw_sum/T) is also stored
+    # for use in mean-comparison tests (e.g., is the mean of several recent
+    # quarters statistically different from the baseline mean?).
+    def _nw_sd(s):
+        """NW long-run SD for a single-observation z-score (wider than naive SD)."""
+        vals = s.values
+        nw_var_mean = _newey_west_var_of_mean(vals)
+        n = len(vals[~np.isnan(vals)])
+        nw_sum = nw_var_mean * max(n, 1)  # long-run variance = Var_of_mean × T
+        return float(np.sqrt(nw_sum))
+
+    def _nw_se(s):
+        """NW SE of the historical mean (for mean-comparison tests)."""
+        return float(np.sqrt(_newey_west_var_of_mean(s.values)))
+
+    nw_sd_series = (
+        baseline.groupby(group_cols)[rate_col]
+        .apply(_nw_sd)
+        .reset_index(name="baseline_nw_sd")
+    )
+    nw_se_series = (
+        baseline.groupby(group_cols)[rate_col]
+        .apply(_nw_se)
+        .reset_index(name="baseline_nw_se")
+    )
+    stats = stats.merge(nw_sd_series, on=group_cols, how="left")
+    stats = stats.merge(nw_se_series, on=group_cols, how="left")
+
     # Diagnostic: flag sparse or NaN buckets so March-like gaps are visible
     sparse = stats[(stats["n_obs"] < 5) | stats["baseline_mean"].isna()]
     if not sparse.empty:
@@ -380,8 +448,30 @@ def flag_recent_vs_baseline(
         recent["season"] = recent[period_col].dt.quarter
 
     merged = recent.merge(baseline_stats, on=["age_group", "season"], how="left")
+
+    # z_score: how many SDs of *historical rate variation* above the baseline mean.
+    # This is a descriptive measure of how unusual the period is relative to history;
+    # it does NOT test whether the mean is statistically different from baseline.
     merged["z_score"] = (merged[rate_col] - merged["baseline_mean"]) / merged["baseline_sd"]
-    merged["above_baseline"] = merged["z_score"] > 1
-    merged["below_baseline"] = merged["z_score"] < -1
+
+    # z_score_nw: Newey-West autocorrelation-corrected descriptive z-score.
+    # Uses baseline_nw_sd = √(NW long-run variance) as the denominator.
+    # For positively autocorrelated series (typical), baseline_nw_sd > baseline_sd,
+    # so z_score_nw is SMALLER (more conservative) than z_score. This corrects for
+    # the fact that autocorrelated observations provide less independent information
+    # than i.i.d. draws, so the effective spread of the process is wider.
+    # NOTE: baseline_nw_se (SE of the historical mean) is also available in the merged
+    # frame for mean-comparison tests, but is NOT used here — using SE of the mean as
+    # the denominator for a single new observation yields inflated z-scores (SE << SD).
+    merged["z_score_nw"] = (
+        (merged[rate_col] - merged["baseline_mean"]) / merged["baseline_nw_sd"]
+    )
+
+    # Threshold = 1.96 (95% confidence) for both z-score variants.
+    # Using 1 SD (the prior threshold) yields ~32% false-positive rate under normality.
+    merged["above_baseline"] = merged["z_score"] > 1.96
+    merged["below_baseline"] = merged["z_score"] < -1.96
+    merged["above_baseline_nw"] = merged["z_score_nw"] > 1.96
+    merged["below_baseline_nw"] = merged["z_score_nw"] < -1.96
 
     return merged

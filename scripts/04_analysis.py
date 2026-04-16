@@ -76,7 +76,8 @@ def main():
     mom_recent_robust.to_parquet(PROCESSED_DIR / "recent_vs_baseline_mom_robust.parquet", index=False)
 
     print("\n--- MOM: Recent period vs. baseline (age 20–34) ---")
-    display_cols = ["period", "entry_rate_3mo", "entry_rate_inc_3mo", "baseline_mean", "z_score", "above_baseline"]
+    display_cols = ["period", "entry_rate_3mo", "entry_rate_inc_3mo", "baseline_mean",
+                    "z_score", "above_baseline", "z_score_nw", "above_baseline_nw"]
     subset = mom_recent[mom_recent["age_group"] == "20_to_34"][display_cols]
     print(subset.to_string(index=False))
 
@@ -100,7 +101,8 @@ def main():
     yoy_recent_robust.to_parquet(PROCESSED_DIR / "recent_vs_baseline_yoy_robust.parquet", index=False)
 
     print("\n--- YOY: Recent period vs. baseline (age 20–34) ---")
-    display_cols = ["quarter", "entry_rate", "entry_rate_inc", "baseline_mean", "z_score", "above_baseline"]
+    display_cols = ["quarter", "entry_rate", "entry_rate_inc", "baseline_mean",
+                    "z_score", "above_baseline", "z_score_nw", "above_baseline_nw"]
     subset = yoy_recent[yoy_recent["age_group"] == "20_to_34"][display_cols]
     print(subset.to_string(index=False))
 

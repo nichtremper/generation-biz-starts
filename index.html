@@ -470,10 +470,16 @@
     <p>
       For the youngest cohort, the unemployment→SE pathway (crimson) spiked
       sharply during the COVID lockdowns and then fully reverted to baseline.
-      The employment→SE pathway (steelblue) has been running modestly but
-      persistently above 100 in the recent period — meaning young workers with jobs
-      are choosing self-employment at a slightly elevated rate relative to history.
-      This is the signature of opportunity entrepreneurship.
+      The employment→SE pathway (steelblue) has been running modestly above 100
+      in the recent period — consistent with the signature of opportunity
+      entrepreneurship (employed workers choosing self-employment). Note that
+      the unemployment→SE pathway has a small denominator (few unemployed workers
+      per rotation cohort per quarter), so its reversion to baseline should be
+      interpreted with caution. Additionally, the year-over-year entry rate —
+      the most durable measure of new business formation — is broadly at historical
+      norms for 20–34, suggesting that while the employment→SE transition is
+      slightly elevated, this has not yet translated into a dramatic surge in
+      lasting new businesses.
     </p>
 
     <h3>Age 55–64: The Opposite Pattern</h3>
@@ -481,7 +487,7 @@
       Older workers show the reverse: the unemployment→SE index remains notably
       elevated post-COVID while the employment→SE channel has mean-reverted.
       This is consistent with a necessity story — older workers displaced from jobs
-      and entering self-employment as an alternative to continued unemployment.
+      entering self-employment as an alternative to continued unemployment.
     </p>
 
     <h3>Ages 35–54: Broad Mean Reversion</h3>
@@ -575,11 +581,17 @@
            alt="Year-over-year SE entry rates by age group with 95% confidence intervals">
       <figcaption>
         <strong>Figure 4. Self-employment entry rate — year-over-year method (CPS, MISH 4→8).</strong>
-        Entry rate = share of non-SE workers at observation 1 who are SE approximately
+        Entry rate = share of employed non-SE workers at observation 1 who are SE approximately
         12 months later, weighted by IPUMS linked year-over-year weight (LNKFW1YWT).
+        Incorporated-only rate uses a strict definition: was not SE at all at T₀, is
+        incorporated SE at T₁ (excludes unincorporated→incorporated restructurings).
         Shaded band = 95% CI with design-effect correction (DEFF = 1.5) for CPS
         clustered sampling. COVID era (2020–2022) shaded gray.
-        Methodology follows Kauffman Foundation New Entrepreneur Rate.
+        <strong>Note:</strong> The Kauffman Foundation's usual-hours-worked filter
+        (UHRSWORKT ≥ 15 hrs/week) could not be applied; this variable was absent from
+        the IPUMS extract. Rates therefore include marginal SE workers and may be
+        modestly overstated relative to published Kauffman NER values.
+        Methodology otherwise follows Kauffman Foundation New Entrepreneur Rate.
         Source: U.S. Census Bureau &amp; BLS, Current Population Survey;
         IPUMS CPS, University of Minnesota.
       </figcaption>
@@ -626,9 +638,12 @@
       </div>
       <div class="method-card">
         <h4>Entry rate</h4>
-        Follows Kauffman New Entrepreneur Rate: (weighted count of non-SE at T₀
+        Follows Kauffman New Entrepreneur Rate: (weighted count of employed non-SE at T₀
         who are SE at T₁) ÷ (weighted count of employed non-SE at T₀).
         YOY weight: LNKFW1YWT. MOM weight: WTFINL at T₀.
+        Incorporated-only entry rate uses strict definition (not SE at all at T₀),
+        excluding unincorporated→incorporated legal restructurings.
+        Hours-worked filter (≥15 hrs/week) not applied; UHRSWORKT absent from extract.
       </div>
       <div class="method-card">
         <h4>Baseline period</h4>
@@ -641,6 +656,9 @@
         Normal approximation with design-effect scalar DEFF = 1.5, applied as
         SE = √(DEFF · p(1−p)/n). Conservative scalar for CPS stratified
         cluster sampling; PSU/stratum variables not in extract.
+        "Above baseline" flags use a 95% threshold (|z| &gt; 1.96) against the
+        2005–2019 seasonal mean; Newey-West autocorrelation-corrected z-scores
+        also computed for inferential comparisons.
       </div>
     </div>
 

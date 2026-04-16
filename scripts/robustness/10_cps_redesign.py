@@ -68,10 +68,7 @@ def welch_t_test(a, b):
     df = (va/na + vb/nb)**2 / (
         (va/na)**2 / (na - 1) + (vb/nb)**2 / (nb - 1)
     )
-    # Approximate p-value using normal distribution (valid for large df)
-    from scipy.special import btdtr  # noqa: F401
-    # Fall back to normal approximation to avoid scipy dependency
-    # z-score approximation good for df > 30
+    # Normal approximation to p-value; valid when df > 30 (typical here with 10+ years)
     p = 2 * (1 - _normal_cdf(abs(t)))
     return t, p
 
