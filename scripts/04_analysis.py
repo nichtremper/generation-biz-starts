@@ -1,9 +1,11 @@
 """
 Step 4: Compute entry and persistence rates, compare recent period to historical baseline.
+Also computes baseline comparisons for SE stock (share of employed and labor force).
 
 Reads:
   data/processed/matched_mom.parquet
   data/processed/matched_yoy.parquet
+  data/processed/se_stock.parquet
 
 Prints summary tables to stdout. Saves results to:
   data/processed/rates_mom.parquet
@@ -14,6 +16,8 @@ Prints summary tables to stdout. Saves results to:
   data/processed/persistence_yoy.parquet
   data/processed/recent_vs_baseline_persistence_mom.parquet
   data/processed/recent_vs_baseline_persistence_yoy.parquet
+  data/processed/recent_vs_baseline_stock_employed.parquet
+  data/processed/recent_vs_baseline_stock_lf.parquet
 """
 
 from datetime import datetime
@@ -29,6 +33,8 @@ from src.rates import (
     compute_baseline_stats,
     compute_mom_rates,
     compute_mom_persistence_rates,
+    compute_mom_transition_rates,
+    compute_quarterly_transition_rates,
     compute_yoy_rates,
     compute_yoy_persistence_rates,
     flag_recent_vs_baseline,
@@ -132,6 +138,44 @@ def main():
     display_cols = ["quarter", "persistence_rate", "persistence_rate_inc", "baseline_mean", "z_score", "above_baseline"]
     subset = yoy_persist_recent[yoy_persist_recent["age_group"] == "20_to_64"][display_cols]
     print(subset.to_string(index=False))
+
+    # --- MOM transition rates (unemployment→SE vs employment→SE) ---
+    log("Computing MOM transition rates (monthly)...")
+    mom_transition = compute_mom_transition_rates(mom)
+    mom_transition.to_parquet(PROCESSED_DIR / "transition_rates_mom.parquet", index=False)
+    log("  Saved: transition_rates_mom.parquet")
+
+    log("Computing quarterly transition rates...")
+    quarterly_transition = compute_quarterly_transition_rates(mom)
+    quarterly_transition.to_parquet(PROCESSED_DIR / "transition_rates_quarterly.parquet", index=False)
+    log("  Saved: transition_rates_quarterly.parquet")
+
+    # --- SE stock baseline comparisons ---
+    stock_path = PROCESSED_DIR / "se_stock.parquet"
+    if stock_path.exists():
+        log("Reading SE stock...")
+        stock = pd.read_parquet(stock_path)
+        stock["period"] = pd.to_datetime(
+            stock["YEAR"].astype(str) + "-" + stock["MONTH"].astype(str).str.zfill(2)
+        )
+
+        for rate_col, label, out_name in [
+            ("se_share_employed", "employed", "stock_employed"),
+            ("se_share_lf",       "labor force", "stock_lf"),
+        ]:
+            log(f"  Computing stock baseline stats (denominator: {label})...")
+            baseline = compute_baseline_stats(stock, period_col="period", rate_col=rate_col)
+            recent = flag_recent_vs_baseline(stock, baseline, period_col="period", rate_col=rate_col)
+            out_path = PROCESSED_DIR / f"recent_vs_baseline_{out_name}.parquet"
+            recent.to_parquet(out_path, index=False)
+            log(f"  Saved: {out_path.name}")
+
+        print("\n--- SE Stock (share of employed, age 20–34) ---")
+        disp_cols = ["period", "se_share_employed", "se_share_inc_employed", "wt_se", "wt_employed"]
+        subset = stock[stock["age_group"] == "20_to_34"][disp_cols].sort_values("period").tail(12)
+        print(subset.to_string(index=False))
+    else:
+        log("se_stock.parquet not found — skipping stock analysis. Run 02_match.py first.")
 
     # --- MOM vs YOY divergence note ---
     log("Pipeline complete.")

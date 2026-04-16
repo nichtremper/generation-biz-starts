@@ -1,11 +1,13 @@
 """
 Step 2: Build month-over-month and year-over-year matched person pairs.
+Also computes the monthly SE stock (cross-sectional counts and shares).
 
 Reads raw IPUMS extract from data/raw/, converts to chunked parquet on first run
 (bounded memory — one chunk at a time), then uses Polars lazy frames for joins.
 Outputs:
   data/processed/matched_mom.parquet
   data/processed/matched_yoy.parquet
+  data/processed/se_stock.parquet
 """
 
 from datetime import datetime
@@ -83,6 +85,85 @@ def load_or_convert() -> pl.LazyFrame:
     return pl.scan_parquet(str(CHUNK_DIR / "chunk_*.parquet"))
 
 
+def compute_se_stock(lf: pl.LazyFrame) -> pl.DataFrame:
+    """
+    Compute monthly SE stock (counts and shares) from the full cross-sectional CPS.
+
+    A single lazy scan — filters, flags, and aggregates in one pass.
+
+    Numerator:  EMPSTAT in [10, 12] AND CLASSWKR in [13, 14] (employed + SE).
+                CLASSWKR is NIU for non-employed, so the EMPSTAT guard is required.
+    Denominator (employed): EMPSTAT in [10, 12].
+    Denominator (labor force): EMPSTAT in [10, 12, 20, 21, 22].
+
+    No hours-worked filter is applied (stock = head count, not transition-based).
+
+    Returns a pandas DataFrame with one row per (YEAR, MONTH, age_group) covering
+    the four non-overlapping groups plus a 20_to_64 aggregate.
+    """
+    EMPLOYED = [10, 12]
+    UNEMPLOYED = [20, 21, 22]
+    SE_CODES = [13, 14]
+
+    result = (
+        lf
+        .filter(pl.col("EMPSTAT").is_in(EMPLOYED + UNEMPLOYED))
+        .filter(pl.col("AGE").is_between(20, 64))
+        .with_columns([
+            # SE flags — meaningful only for employed; False for unemployed (CLASSWKR=0)
+            (pl.col("EMPSTAT").is_in(EMPLOYED) & pl.col("CLASSWKR").is_in(SE_CODES))
+            .cast(pl.Float64).alias("is_se"),
+            (pl.col("EMPSTAT").is_in(EMPLOYED) & (pl.col("CLASSWKR") == 13))
+            .cast(pl.Float64).alias("is_se_inc"),
+            # Employed flag (for employed-only denominator)
+            pl.col("EMPSTAT").is_in(EMPLOYED).cast(pl.Float64).alias("is_employed"),
+            # Age group (mutually exclusive 4-way split; 20-64 aggregate added below)
+            pl.when(pl.col("AGE").is_between(20, 34)).then(pl.lit("20_to_34"))
+            .when(pl.col("AGE").is_between(35, 44)).then(pl.lit("35_to_44"))
+            .when(pl.col("AGE").is_between(45, 54)).then(pl.lit("45_to_54"))
+            .otherwise(pl.lit("55_to_64")).alias("age_group"),
+        ])
+        .with_columns([
+            (pl.col("WTFINL") * pl.col("is_se")).alias("wt_se"),
+            (pl.col("WTFINL") * pl.col("is_se_inc")).alias("wt_se_inc"),
+            (pl.col("WTFINL") * pl.col("is_employed")).alias("wt_employed"),
+        ])
+        .group_by(["YEAR", "MONTH", "age_group"])
+        .agg([
+            pl.col("wt_se").sum(),
+            pl.col("wt_se_inc").sum(),
+            pl.col("wt_employed").sum(),
+            pl.col("WTFINL").sum().alias("wt_lf"),   # all LF (employed + unemployed)
+            pl.len().alias("n_obs"),
+        ])
+        .collect()
+    )
+
+    # 20–64 aggregate: sum all four age groups
+    total = (
+        result
+        .group_by(["YEAR", "MONTH"])
+        .agg([
+            pl.col("wt_se").sum(),
+            pl.col("wt_se_inc").sum(),
+            pl.col("wt_employed").sum(),
+            pl.col("wt_lf").sum(),
+            pl.col("n_obs").sum(),
+        ])
+        .with_columns(pl.lit("20_to_64").alias("age_group"))
+        .select(result.columns)  # enforce matching column order before concat
+    )
+
+    result = pl.concat([result, total]).with_columns([
+        (pl.col("wt_se") / pl.col("wt_employed")).alias("se_share_employed"),
+        (pl.col("wt_se_inc") / pl.col("wt_employed")).alias("se_share_inc_employed"),
+        (pl.col("wt_se") / pl.col("wt_lf")).alias("se_share_lf"),
+        (pl.col("wt_se_inc") / pl.col("wt_lf")).alias("se_share_inc_lf"),
+    ])
+
+    return result.to_pandas()
+
+
 def main():
     lf = load_or_convert()
 
@@ -97,6 +178,12 @@ def main():
     log(f"  YOY pairs: {len(yoy):,}. Writing parquet...")
     yoy.write_parquet(PROCESSED_DIR / "matched_yoy.parquet")
     log("  Saved: data/processed/matched_yoy.parquet")
+
+    log("Computing SE stock (cross-sectional counts and shares)...")
+    stock = compute_se_stock(lf)
+    log(f"  Stock rows: {len(stock):,}. Writing parquet...")
+    stock.to_parquet(PROCESSED_DIR / "se_stock.parquet", index=False)
+    log("  Saved: data/processed/se_stock.parquet")
 
 
 if __name__ == "__main__":

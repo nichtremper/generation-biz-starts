@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Young Americans and the Business Formation Surge</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:       #2a6496;
+      --blue-light: #eaf3fb;
+      --crimson:    #c0392b;
+      --olive:      #6b7c2e;
+      --text:       #1a1a2e;
+      --muted:      #555566;
+      --border:     #dde3ea;
+      --bg:         #ffffff;
+      --bg-alt:     #f7f9fc;
+      --max-w:      900px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--blue);
+      color: #fff;
+      padding: 3rem 1.5rem 2.5rem;
+      text-align: center;
+    }
+    header .eyebrow {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.75;
+      margin-bottom: 0.6rem;
+    }
+    header h1 {
+      font-size: clamp(1.5rem, 4vw, 2.4rem);
+      font-weight: 700;
+      line-height: 1.2;
+      max-width: 700px;
+      margin: 0 auto 1rem;
+    }
+    header .subtitle {
+      font-size: 1rem;
+      opacity: 0.85;
+      max-width: 620px;
+      margin: 0 auto;
+    }
+    header .meta {
+      font-size: 0.8rem;
+      opacity: 0.65;
+      margin-top: 1.2rem;
+    }
+
+    /* ── Layout ── */
+    main {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 1.5rem 4rem;
+    }
+
+    section { margin-top: 3.5rem; }
+
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--blue);
+      border-bottom: 2px solid var(--blue);
+      padding-bottom: 0.4rem;
+      margin-bottom: 1.2rem;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 1.5rem 0 0.5rem;
+    }
+
+    p { margin-bottom: 0.9rem; color: var(--text); }
+    p:last-child { margin-bottom: 0; }
+
+    /* ── Key findings box ── */
+    .findings {
+      background: var(--blue-light);
+      border-left: 4px solid var(--blue);
+      border-radius: 0 6px 6px 0;
+      padding: 1.4rem 1.6rem;
+      margin: 2rem 0;
+    }
+    .findings h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin: 0 0 0.9rem;
+    }
+    .findings ol {
+      padding-left: 1.3rem;
+    }
+    .findings li {
+      margin-bottom: 0.65rem;
+      font-size: 0.96rem;
+      line-height: 1.55;
+    }
+    .findings li:last-child { margin-bottom: 0; }
+    .findings strong { color: var(--blue); }
+
+    /* ── Callout chips ── */
+    .chip {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.2em 0.7em;
+      border-radius: 3px;
+      margin-bottom: 0.5rem;
+      vertical-align: middle;
+    }
+    .chip-blue   { background: var(--blue);    color: #fff; }
+    .chip-red    { background: var(--crimson); color: #fff; }
+    .chip-olive  { background: var(--olive);   color: #fff; }
+    .chip-gray   { background: #6c757d;        color: #fff; }
+
+    /* ── Figures ── */
+    .figure {
+      margin: 1.8rem 0;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .figure figcaption {
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      line-height: 1.45;
+    }
+    .figure figcaption strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* ── Inline stat highlight ── */
+    .stat-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin: 1.2rem 0;
+    }
+    .stat {
+      flex: 1 1 180px;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1.1rem;
+    }
+    .stat .label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+    }
+    .stat .value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--blue);
+      line-height: 1.1;
+    }
+    .stat .note {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    /* ── Legend key ── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem 1.4rem;
+      font-size: 0.8rem;
+      margin: 0.5rem 0 1rem;
+      padding: 0.7rem 1rem;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.45rem; }
+    .swatch {
+      width: 26px; height: 3px; border-radius: 2px; flex-shrink: 0;
+    }
+    .swatch-dashed {
+      width: 26px; height: 0; border-top: 2.5px dashed; flex-shrink: 0;
+    }
+
+    /* ── Methodology ── */
+    .method-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .method-card {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1.1rem;
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+    .method-card h4 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    /* ── Citation ── */
+    .citation {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1.2rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 1rem;
+      line-height: 1.55;
+    }
+    .citation p { color: var(--muted); font-size: 0.8rem; margin-bottom: 0.5rem; }
+    .citation p:last-child { margin-bottom: 0; }
+    .citation a { color: var(--blue); text-decoration: none; }
+    .citation a:hover { text-decoration: underline; }
+
+    /* ── Caveat box ── */
+    .caveat {
+      border: 1px solid #f0c04a;
+      background: #fffbee;
+      border-radius: 6px;
+      padding: 0.9rem 1.1rem;
+      font-size: 0.84rem;
+      color: #5a4a00;
+      margin: 1.2rem 0;
+      line-height: 1.5;
+    }
+    .caveat strong { color: #5a4a00; }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--bg-alt);
+      border-top: 1px solid var(--border);
+      padding: 1.5rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4rem;
+    }
+
+    /* ── Responsive tweaks ── */
+    @media (max-width: 600px) {
+      header { padding: 2rem 1rem 1.8rem; }
+      main { padding: 0 1rem 3rem; }
+      .stat .value { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">CPS Microdata Analysis &nbsp;·&nbsp; 2005–2025</p>
+  <h1>Young Americans and the Business Formation Surge</h1>
+  <p class="subtitle">
+    A data analysis of self-employment participation among adults 20–64
+    using Current Population Survey microdata, following the Kauffman Foundation's
+    New Entrepreneur Rate methodology.
+  </p>
+  <p class="meta">Data: U.S. Census Bureau &amp; BLS, Current Population Survey via IPUMS &nbsp;·&nbsp; Analysis updated April 2026</p>
+</header>
+
+<main>
+
+  <!-- Key Findings -->
+  <section>
+    <h2>Key Findings</h2>
+
+    <div class="findings">
+      <h3>Summary</h3>
+      <ol>
+        <li>
+          <strong>All five age cohorts are above their 2016–2019 SE share</strong> — the
+          post-COVID recovery in self-employment participation is broad-based, not confined
+          to any one group.
+        </li>
+        <li>
+          <strong>Workers 20–34 show the most striking recovery.</strong> Their SE share
+          has returned to the long-run 2005–2019 mean — a level not sustained since the
+          dot-com era — reversing a 15-year secular decline.
+        </li>
+        <li>
+          <strong>The mechanism for 20–34 is opportunity, not necessity.</strong>
+          Post-COVID SE entry in this cohort is driven by <em>employed workers choosing</em>
+          self-employment, not unemployed workers being pushed into it. The pattern for
+          55–64-year-olds is the reverse.
+        </li>
+        <li>
+          <strong>Durable formation rates are broadly at historical norms.</strong>
+          Year-over-year entry rates (the most stable measure of lasting business formation)
+          are near baseline for all cohorts. The elevated stock reflects accumulated entry
+          over several years combined with solid persistence rates.
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Section 1: Stock Recovery -->
+  <section>
+    <h2>1 &nbsp; The Stock Recovery — All Cohorts Above Pre-COVID Baseline</h2>
+
+    <p>
+      The share of employed workers who are self-employed fell steadily from the early
+      2000s through 2019 across every age group. The COVID-19 pandemic and its aftermath
+      reversed that trend. As of 2024–2025, every cohort is above its 2016–2019
+      average — the immediate pre-pandemic baseline — and several are approaching or
+      exceeding their long-run 2005–2019 mean.
+    </p>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="swatch" style="background:#2a6496;"></span>
+        Combined SE / employed workers
+      </div>
+      <div class="legend-item">
+        <span class="swatch" style="background:#e67e22; border-top: 2.5px dashed #e67e22; height:0; width:26px;"></span>
+        Incorporated SE only
+      </div>
+      <div class="legend-item">
+        <span class="swatch-dashed" style="border-color:#333333;"></span>
+        2005–2019 long-run mean
+      </div>
+      <div class="legend-item">
+        <span class="swatch-dashed" style="border-color:#6b7c2e;"></span>
+        2016–2019 pre-COVID mean
+      </div>
+    </div>
+
+    <figure class="figure">
+      <img src="figures/se_stock_annual_share.png"
+           alt="Annual average SE share by age group with 2005–2019 and 2016–2019 reference lines">
+      <figcaption>
+        <strong>Figure 1. Self-employed share of employed workers — annual average, by age group.</strong>
+        Each point is the mean monthly SE share for that calendar year, excluding months
+        with missing observations (a data gap affects March in some years).
+        Dashed horizontal lines mark the 2005–2019 long-run mean (dark gray) and the
+        2016–2019 immediate pre-COVID mean (olive). COVID era (2020–2022) shaded.
+        Dotted vertical line marks October 2023 (recent analysis window).
+        Source: U.S. Census Bureau &amp; BLS, Current Population Survey;
+        IPUMS CPS, University of Minnesota.
+      </figcaption>
+    </figure>
+
+    <h3>Age 20–34: A Structural Break</h3>
+    <p>
+      The youngest cohort tells the clearest story. Their SE share declined from a peak
+      near 5.5% in the early 2000s to a trough around 4.5% in the late 2010s — a
+      15-year erosion. Post-COVID, that decline has fully reversed. The 2023–2025
+      annual averages are above the crimson 2016–2019 reference line and tracking
+      near the gray 2005–2019 long-run mean. This is the first sustained period above
+      the pre-COVID baseline since the dot-com era.
+    </p>
+
+    <h3>Ages 35–64: Recovery, but From Lower Levels</h3>
+    <p>
+      Older cohorts saw a much steeper secular decline — SE share fell by 3–5
+      percentage points from 2004 to 2019 in the 45–54 and 55–64 groups. The
+      post-COVID recovery is real but incomplete: all cohorts are above the 2016–2019
+      line, but still well below their 2004 peaks. The 55–64 group has recovered the
+      most ground in absolute terms; the 35–44 group the least.
+    </p>
+
+    <div class="caveat">
+      <strong>Note on the SE stock vs. business applications:</strong>
+      The Census Bureau's Business Formation Statistics (BFS) show a surge in
+      high-propensity business applications since 2020. The CPS SE stock and BFS
+      measure different things — BFS counts EIN filings, including by people who
+      remain wage/salary workers in their primary job. CPS captures only those
+      whose <em>primary</em> employment is self-employment. Both can increase
+      simultaneously; the BFS surge likely exceeds what CPS captures.
+    </div>
+  </section>
+
+  <!-- Section 2: Opportunity vs Necessity -->
+  <section>
+    <h2>2 &nbsp; Opportunity, Not Necessity — The 20–34 Entry Pathway</h2>
+
+    <p>
+      Not all SE entry is equal. Workers pushed into self-employment by unemployment
+      — "necessity entrepreneurship" — tend to form less durable, lower-quality
+      businesses than those who leave stable employment by choice — "opportunity
+      entrepreneurship." The pathway matters for interpreting the post-COVID surge.
+    </p>
+    <p>
+      To distinguish the two, we compute separate monthly transition rates from the
+      CPS rotation structure:
+    </p>
+    <ul style="padding-left:1.4rem; margin-bottom:0.9rem; font-size:0.95rem;">
+      <li style="margin-bottom:0.4rem;">
+        <strong>Unemployment → SE:</strong> share of unemployed workers at month T
+        who are self-employed at month T+1
+      </li>
+      <li>
+        <strong>Employment → SE:</strong> share of employed, non-SE workers at month T
+        who are self-employed at month T+1
+      </li>
+    </ul>
+    <p>
+      Both rates are indexed to their 2005–2019 average (= 100) so they can be
+      compared on a common scale despite very different base levels.
+      Pairs are aggregated quarterly to reduce noise in the unemployment pathway,
+      where the denominator (unemployed persons in a given rotation cohort) is small.
+    </p>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="swatch" style="background:#2a6496;"></span>
+        Employment → SE (index, 2005–2019 = 100)
+      </div>
+      <div class="legend-item">
+        <span class="swatch" style="background:#c0392b;"></span>
+        Unemployment → SE (index, 2005–2019 = 100)
+      </div>
+    </div>
+
+    <figure class="figure">
+      <img src="figures/transition_index_quarterly.png"
+           alt="Indexed quarterly transition rates: unemployment-to-SE vs employment-to-SE by age group">
+      <figcaption>
+        <strong>Figure 2. SE entry pathway index — unemployment→SE vs. employment→SE,
+        quarterly (MOM matched pairs, aggregated).</strong>
+        Both rates normalized to their 2005–2019 mean = 100 per age group.
+        A value above 100 means the pathway is more active than its historical average.
+        COVID era (2020–2022) shaded.
+        Source: U.S. Census Bureau &amp; BLS, Current Population Survey;
+        IPUMS CPS, University of Minnesota.
+      </figcaption>
+    </figure>
+
+    <h3>Age 20–34: Employment → SE Is the Active Channel</h3>
+    <p>
+      For the youngest cohort, the unemployment→SE pathway (crimson) spiked
+      sharply during the COVID lockdowns and then fully reverted to baseline.
+      The employment→SE pathway (steelblue) has been running modestly but
+      persistently above 100 in the recent period — meaning young workers with jobs
+      are choosing self-employment at a slightly elevated rate relative to history.
+      This is the signature of opportunity entrepreneurship.
+    </p>
+
+    <h3>Age 55–64: The Opposite Pattern</h3>
+    <p>
+      Older workers show the reverse: the unemployment→SE index remains notably
+      elevated post-COVID while the employment→SE channel has mean-reverted.
+      This is consistent with a necessity story — older workers displaced from jobs
+      and entering self-employment as an alternative to continued unemployment.
+    </p>
+
+    <h3>Ages 35–54: Broad Mean Reversion</h3>
+    <p>
+      Both pathways spiked during COVID for these cohorts and have largely returned
+      to baseline. No unusual post-COVID elevation in either channel.
+    </p>
+  </section>
+
+  <!-- Section 3: SE Share and Unemployment -->
+  <section>
+    <h2>3 &nbsp; Self-Employment Is Not Just a Cyclical Response</h2>
+
+    <p>
+      One natural question: is the post-COVID SE recovery simply a function of a tight
+      labor market pushing up SE share mechanically (lower unemployment denominator in the
+      labor force, fewer people cycling through unemployment)? The scatter below suggests
+      the answer for 20–34 is no.
+    </p>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span style="width:10px;height:10px;border-radius:50%;background:#2a6496;opacity:0.7;flex-shrink:0;display:inline-block;"></span>
+        2005–2019 baseline months
+      </div>
+      <div class="legend-item">
+        <span style="width:10px;height:10px;border-radius:50%;background:#999;opacity:0.7;flex-shrink:0;display:inline-block;"></span>
+        COVID era (2020–2022)
+      </div>
+      <div class="legend-item">
+        <span style="width:10px;height:10px;border-radius:50%;background:#c0392b;flex-shrink:0;display:inline-block;"></span>
+        Recent (Oct 2023+)
+      </div>
+      <div class="legend-item">
+        <span class="swatch" style="background:#2a6496;"></span>
+        OLS fit (baseline only)
+      </div>
+    </div>
+
+    <figure class="figure">
+      <img src="figures/se_unemp_scatter.png"
+           alt="Scatter of monthly SE share vs unemployment rate by age group, with OLS fit on baseline">
+      <figcaption>
+        <strong>Figure 3. SE share of employed workers vs. unemployment rate — monthly observations.</strong>
+        Each point is one month's observation for that age group. OLS line fitted on
+        2005–2019 baseline only; extended across the full x-range so deviations by
+        COVID-era and recent months are visible. Correlation coefficient (r) computed
+        on baseline months.
+        Source: U.S. Census Bureau &amp; BLS, Current Population Survey;
+        IPUMS CPS, University of Minnesota.
+      </figcaption>
+    </figure>
+
+    <p>
+      For the 20–34 cohort, the historical relationship between SE share and
+      unemployment is essentially flat (r = −0.09, β = −0.09) — SE participation
+      in this age group was never strongly cyclical. Critically, the recent crimson
+      points cluster <em>above</em> the OLS baseline, meaning the current SE share
+      is higher than the historical unemployment rate alone would predict.
+    </p>
+    <p>
+      Older cohorts show the expected positive correlation (higher unemployment → more
+      necessity SE), but even there, the recent post-COVID points do not fall on the
+      baseline relationship in a way that would make the recovery look purely mechanical.
+    </p>
+  </section>
+
+  <!-- Section 4: Flow Rates -->
+  <section>
+    <h2>4 &nbsp; Flow Rates — Entry Is Near Historical Norms</h2>
+
+    <p>
+      The stock analysis above measures who <em>is</em> self-employed at a point in time.
+      The flow analysis measures who <em>enters</em> self-employment. We use two methods
+      from the CPS rotation structure:
+    </p>
+    <ul style="padding-left:1.4rem; margin-bottom:0.9rem; font-size:0.95rem;">
+      <li style="margin-bottom:0.4rem;">
+        <strong>Month-over-month (MOM):</strong> tracks person transitions between
+        consecutive survey months. Captures rapid and gig-economy entry; higher volatility.
+      </li>
+      <li>
+        <strong>Year-over-year (YOY):</strong> matches the same person at MISH 4 and
+        MISH 8 (~12 months apart). Captures durable business formation; lower volatility
+        but carries a ~15-month publication lag.
+      </li>
+    </ul>
+
+    <figure class="figure">
+      <img src="figures/entry_rates_yoy.png"
+           alt="Year-over-year SE entry rates by age group with 95% confidence intervals">
+      <figcaption>
+        <strong>Figure 4. Self-employment entry rate — year-over-year method (CPS, MISH 4→8).</strong>
+        Entry rate = share of non-SE workers at observation 1 who are SE approximately
+        12 months later, weighted by IPUMS linked year-over-year weight (LNKFW1YWT).
+        Shaded band = 95% CI with design-effect correction (DEFF = 1.5) for CPS
+        clustered sampling. COVID era (2020–2022) shaded gray.
+        Methodology follows Kauffman Foundation New Entrepreneur Rate.
+        Source: U.S. Census Bureau &amp; BLS, Current Population Survey;
+        IPUMS CPS, University of Minnesota.
+      </figcaption>
+    </figure>
+
+    <p>
+      Year-over-year entry rates are broadly at or near historical baseline for all
+      cohorts. There is no dramatic spike in durable new business formation — the
+      elevated stock is better explained by the compounding effect of several years of
+      flows that are modestly above (or at) their pre-COVID trough, combined with
+      solid persistence rates (the fraction of SE workers who remain SE 12 months later).
+    </p>
+    <p>
+      Month-over-month rates for 20–34 show more individual months above their
+      seasonal baseline, particularly in 2024, but the YOY series — which filters
+      out short-lived or abandoned attempts — is more muted. Where MOM is elevated
+      but YOY is not, the signal is workers testing self-employment rather than
+      committing durably.
+    </p>
+  </section>
+
+  <!-- Methodology -->
+  <section>
+    <h2>Methodology</h2>
+
+    <div class="method-grid">
+      <div class="method-card">
+        <h4>Data source</h4>
+        U.S. Census Bureau &amp; Bureau of Labor Statistics, Current Population Survey
+        (CPS) basic monthly microdata, 2005–2025. Accessed via IPUMS CPS,
+        University of Minnesota.
+      </div>
+      <div class="method-card">
+        <h4>SE definition</h4>
+        CLASSWKR = 13 (incorporated) or 14 (unincorporated). Combined SE and
+        incorporated-only tracks reported separately throughout.
+        Stock counts include all employed workers (EMPSTAT 10 or 12).
+      </div>
+      <div class="method-card">
+        <h4>Matching</h4>
+        Persons matched on CPSIDP across rotation positions. MOM: consecutive MISH
+        values within a rotation stint. YOY: MISH 4 → MISH 8 (~12 months).
+        Matches validated on age (±1 year) and sex.
+      </div>
+      <div class="method-card">
+        <h4>Entry rate</h4>
+        Follows Kauffman New Entrepreneur Rate: (weighted count of non-SE at T₀
+        who are SE at T₁) ÷ (weighted count of employed non-SE at T₀).
+        YOY weight: LNKFW1YWT. MOM weight: WTFINL at T₀.
+      </div>
+      <div class="method-card">
+        <h4>Baseline period</h4>
+        2005–2019 (primary). 2016–2019 used as immediate pre-COVID reference.
+        COVID years (2020–2022) excluded from all baseline calculations.
+        Recent window: October 2023 onward.
+      </div>
+      <div class="method-card">
+        <h4>Confidence intervals</h4>
+        Normal approximation with design-effect scalar DEFF = 1.5, applied as
+        SE = √(DEFF · p(1−p)/n). Conservative scalar for CPS stratified
+        cluster sampling; PSU/stratum variables not in extract.
+      </div>
+    </div>
+
+    <div class="citation">
+      <p>
+        <strong>Primary data citation:</strong><br>
+        Sarah Flood, Miriam King, Renae Rodgers, Steven Ruggles, J. Robert Warren,
+        Daniel Backman, Annie Chen, Grace Cooper, Stephanie Richards,
+        Megan Schouweiler, and Michael Westberry.
+        <em>IPUMS CPS: Version 12.0</em> [dataset].
+        Minneapolis, MN: IPUMS, 2024.
+        <a href="https://doi.org/10.18128/D030.V12.0">https://doi.org/10.18128/D030.V12.0</a>
+      </p>
+      <p>
+        <strong>Underlying survey:</strong><br>
+        U.S. Census Bureau and U.S. Bureau of Labor Statistics.
+        <em>Current Population Survey.</em>
+        Washington, DC: U.S. Census Bureau.
+        <a href="https://www.census.gov/programs-surveys/cps.html">census.gov/programs-surveys/cps</a>
+      </p>
+      <p>
+        <strong>Methodological reference:</strong><br>
+        Kauffman Foundation. <em>New Employer Business Rate.</em>
+        Kansas City, MO: Ewing Marion Kauffman Foundation.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Analysis by Nich Tremper &nbsp;·&nbsp;
+  Data: U.S. Census Bureau &amp; BLS, Current Population Survey via
+  IPUMS CPS, University of Minnesota &nbsp;·&nbsp;
+  Code and replication materials:
+  <a href="https://github.com/nichtremper/generation-biz-starts"
+     style="color:var(--blue);">github.com/nichtremper/generation-biz-starts</a>
+</footer>
+
+</body>
+</html>

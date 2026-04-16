@@ -210,6 +210,104 @@ def compute_yoy_persistence_rates(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(records).sort_values(["age_group", "quarter"])
 
 
+def compute_mom_transition_rates(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute monthly unemployment→SE and employment→SE transition rates from MOM pairs.
+
+    Unemployment→SE rate: weighted share of persons unemployed at T0 (EMPSTAT in [20,21,22])
+    who are SE at T1.
+    Employment→SE rate: same as entry_rate — weighted share of employed non-SE at T0
+    (the at_risk pool) who are SE at T1.
+
+    Both rates are computed per age group per month and 3-month rolling averages appended.
+    """
+    UNEMPLOYED_CODES = [20, 21, 22]
+
+    df = df.copy()
+    df["period"] = pd.to_datetime(
+        df["YEAR_t0"].astype(str) + "-" + df["MONTH_t0"].astype(str).str.zfill(2)
+    )
+
+    records = []
+    for group, (age_min, age_max) in AGE_GROUPS.items():
+        subset = df[df["AGE_t0"].between(age_min, age_max)]
+
+        for period, grp in subset.groupby("period"):
+            # Unemployment → SE
+            unemp = grp[grp["EMPSTAT_t0"].isin(UNEMPLOYED_CODES)]
+            wt_unemp = unemp["WTFINL_t0"].sum()
+            unemp_rate = (
+                (unemp["WTFINL_t0"] * unemp["new_entrant"]).sum() / wt_unemp
+                if wt_unemp > 0 else float("nan")
+            )
+
+            # Employment → SE (existing at_risk formula)
+            emp_rate = _entry_rate(grp, "new_entrant", "at_risk", "WTFINL_t0")
+
+            records.append({
+                "period":         period,
+                "age_group":      group,
+                "unemp_to_se":    unemp_rate,
+                "emp_to_se":      emp_rate,
+                "n_unemp":        len(unemp),
+                "n_emp_at_risk":  int(grp["at_risk"].sum()),
+            })
+
+    result = pd.DataFrame(records).sort_values(["age_group", "period"])
+
+    for col in ["unemp_to_se", "emp_to_se"]:
+        result[f"{col}_3mo"] = (
+            result.groupby("age_group")[col]
+            .transform(lambda s: s.rolling(3, min_periods=1).mean())
+        )
+
+    return result
+
+
+def compute_quarterly_transition_rates(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute quarterly unemployment→SE and employment→SE transition rates from MOM pairs.
+
+    Same logic as compute_mom_transition_rates but groups by T0 quarter, aggregating
+    all month-to-month transitions within the quarter before computing rates.
+    This pools ~3× the observations per period, substantially reducing noise
+    relative to the monthly version.
+    """
+    UNEMPLOYED_CODES = [20, 21, 22]
+
+    df = df.copy()
+    df["quarter"] = pd.PeriodIndex(
+        pd.to_datetime(
+            df["YEAR_t0"].astype(str) + "-" + df["MONTH_t0"].astype(str).str.zfill(2)
+        ),
+        freq="Q",
+    )
+
+    records = []
+    for group, (age_min, age_max) in AGE_GROUPS.items():
+        subset = df[df["AGE_t0"].between(age_min, age_max)]
+
+        for quarter, grp in subset.groupby("quarter"):
+            unemp = grp[grp["EMPSTAT_t0"].isin(UNEMPLOYED_CODES)]
+            wt_unemp = unemp["WTFINL_t0"].sum()
+            unemp_rate = (
+                (unemp["WTFINL_t0"] * unemp["new_entrant"]).sum() / wt_unemp
+                if wt_unemp > 0 else float("nan")
+            )
+            emp_rate = _entry_rate(grp, "new_entrant", "at_risk", "WTFINL_t0")
+
+            records.append({
+                "quarter":       quarter,
+                "age_group":     group,
+                "unemp_to_se":   unemp_rate,
+                "emp_to_se":     emp_rate,
+                "n_unemp":       len(unemp),
+                "n_emp_at_risk": int(grp["at_risk"].sum()),
+            })
+
+    return pd.DataFrame(records).sort_values(["age_group", "quarter"])
+
+
 def compute_baseline_stats(
     rates: pd.DataFrame, period_col: str, baseline_years=None, rate_col: str = "entry_rate"
 ) -> pd.DataFrame:
