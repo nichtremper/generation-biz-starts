@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a data analysis project answering: **Are people 35 and younger starting businesses at higher rates than historical averages?** It uses IPUMS CPS monthly microdata to track transitions into self-employment, following the Kauffman Foundation's New Entrepreneur Rate methodology.
+This is a data analysis project answering: **Are people 34 and younger starting businesses at higher rates than historical averages?** It uses IPUMS CPS monthly microdata to track transitions into self-employment, following the Kauffman Foundation's New Entrepreneur Rate methodology.
 
 ## Environment Setup
 
@@ -50,7 +50,7 @@ python scripts/04_analysis.py  # Compute entry rates, compare recent vs. histori
 - **Baseline period**: 2005–2019 (compute mean ± SD per quarter-of-year for seasonality control)
 - **COVID era**: 2020–2022 — analyze separately, never fold into baseline
 - **Recent period**: October 2023 – present
-- **Primary age group**: ≤35; also 36–50 and 51+ for comparison
+- **Primary age group**: 20–34 (age ≤ 34); also 35–44, 45–54, 55–64 for comparison
 - **Flag**: quarters >1 SD above/below baseline mean
 
 ## Analytical Caveats
