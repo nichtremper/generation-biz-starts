@@ -194,25 +194,6 @@
       margin-top: 0.25rem;
     }
 
-    /* ── Legend key ── */
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.8rem 1.4rem;
-      font-size: 0.8rem;
-      margin: 0.5rem 0 1rem;
-      padding: 0.7rem 1rem;
-      background: var(--bg-alt);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-    }
-    .legend-item { display: flex; align-items: center; gap: 0.45rem; }
-    .swatch {
-      width: 26px; height: 3px; border-radius: 2px; flex-shrink: 0;
-    }
-    .swatch-dashed {
-      width: 26px; height: 0; border-top: 2.5px dashed; flex-shrink: 0;
-    }
 
     /* ── Methodology ── */
     .method-grid {
@@ -366,25 +347,6 @@
       average and several are approaching or exceeding their long-run 2005–2019 mean.
     </p>
 
-    <div class="legend">
-      <div class="legend-item">
-        <span class="swatch" style="background:#2a6496;"></span>
-        All self-employed workers (incorporated + unincorporated) as a share of all employed workers
-      </div>
-      <div class="legend-item">
-        <span class="swatch" style="background:#e67e22; border-top: 2.5px dashed #e67e22; height:0; width:26px;"></span>
-        Incorporated self-employed only (as a share of all employed workers)
-      </div>
-      <div class="legend-item">
-        <span class="swatch-dashed" style="border-color:#333333;"></span>
-        2005–2019 long-run mean
-      </div>
-      <div class="legend-item">
-        <span class="swatch-dashed" style="border-color:#6b7c2e;"></span>
-        2016–2019 pre-COVID mean
-      </div>
-    </div>
-
     <figure class="figure">
       <img src="figures/se_stock_annual_share.png"
            alt="Annual average self-employment share by age group with 2005–2019 and 2016–2019 reference lines">
@@ -479,17 +441,6 @@
       where the denominator (unemployed persons in a given rotation cohort) is small.
     </p>
 
-    <div class="legend">
-      <div class="legend-item">
-        <span class="swatch" style="background:#2a6496;"></span>
-        Employment to self-employment (index, 2005–2019 = 100)
-      </div>
-      <div class="legend-item">
-        <span class="swatch" style="background:#c0392b;"></span>
-        Unemployment to self-employment (index, 2005–2019 = 100)
-      </div>
-    </div>
-
     <figure class="figure">
       <img src="figures/transition_index_quarterly.png"
            alt="Indexed quarterly transition rates: unemployment-to-self-employment vs employment-to-self-employment by age group">
@@ -553,25 +504,6 @@
       of age group, suggesting that the current self-employment share is higher than
       unemployment conditions alone would predict.
     </p>
-
-    <div class="legend">
-      <div class="legend-item">
-        <span style="width:10px;height:10px;border-radius:50%;background:#2a6496;opacity:0.7;flex-shrink:0;display:inline-block;"></span>
-        2005–2019 baseline months
-      </div>
-      <div class="legend-item">
-        <span style="width:10px;height:10px;border-radius:50%;background:#999;opacity:0.7;flex-shrink:0;display:inline-block;"></span>
-        COVID era (2020–2022)
-      </div>
-      <div class="legend-item">
-        <span style="width:10px;height:10px;border-radius:50%;background:#c0392b;flex-shrink:0;display:inline-block;"></span>
-        Recent (Oct 2023+)
-      </div>
-      <div class="legend-item">
-        <span class="swatch" style="background:#2a6496;"></span>
-        OLS fit (baseline only)
-      </div>
-    </div>
 
     <figure class="figure">
       <img src="figures/se_unemp_scatter.png"
