@@ -416,78 +416,91 @@
 
     <p>
       Not all self-employment entry is equal. Workers pushed into self-employment by
-      unemployment (necessity entrepreneurship) tend to form less durable, lower-quality
-      businesses than those who leave stable employment by choice (opportunity
-      entrepreneurship). The pathway matters for interpreting the post-COVID picture.
+      unemployment tend to form less durable, lower-quality businesses than those who
+      leave stable employment by choice. The pathway into self-employment matters for
+      interpreting the post-COVID picture.
     </p>
     <p>
-      To distinguish the two, we compute separate monthly transition rates from the
+      To distinguish the two, we compute separate quarterly transition rates from the
       CPS rotation structure:
     </p>
     <ul style="padding-left:1.4rem; margin-bottom:0.9rem; font-size:0.95rem;">
       <li style="margin-bottom:0.4rem;">
-        <strong>Unemployment to self-employment:</strong> share of unemployed workers at month T
+        <strong>Employment to self-employment:</strong> share of employed wage-and-salary workers at month T
         who are self-employed at month T+1
       </li>
       <li>
-        <strong>Employment to self-employment:</strong> share of employed, non-self-employed workers at month T
+        <strong>Unemployment to self-employment:</strong> share of unemployed workers at month T
         who are self-employed at month T+1
       </li>
     </ul>
     <p>
-      Both rates are indexed to their 2005–2019 average (= 100) so they can be
-      compared on a common scale despite very different base levels.
-      Pairs are aggregated quarterly to reduce noise in the unemployment pathway,
-      where the denominator (unemployed persons in a given rotation cohort) is small.
+      Each panel shows the raw transition rate alongside the shaded 2005–2019 historical
+      range (mean plus or minus one standard deviation). The y-axis is held constant
+      across all four age groups so that absolute levels are directly comparable.
     </p>
 
     <figure class="figure">
-      <img src="figures/transition_index_quarterly.png"
-           alt="Indexed quarterly transition rates: unemployment-to-self-employment vs employment-to-self-employment by age group">
+      <img src="figures/transition_pathway_emp.png"
+           alt="Employment to self-employment transition rate by age group, 2x2 panels with historical band">
       <figcaption>
-        <strong>Figure 2. Self-employment entry pathway index: unemployment-to-self-employment vs. employment-to-self-employment,
-        quarterly (month-over-month matched pairs, aggregated).</strong>
-        Both rates normalized to their 2005–2019 mean = 100 per age group.
-        A value above 100 means the pathway is more active than its historical average.
-        COVID era (2020–2022) shaded.
+        <strong>Figure 2a. Employment to self-employment transition rate by age group, quarterly.</strong>
+        Each panel shows the share of employed workers entering self-employment the following month.
+        Shaded band is the 2005–2019 mean plus or minus one standard deviation.
+        COVID era (2020–2022) shaded gray. Dotted line marks the start of the recent period (October 2023).
         Source: U.S. Census Bureau &amp; BLS, Current Population Survey;
         IPUMS CPS, University of Minnesota.
       </figcaption>
     </figure>
 
-    <h3>Age 20–34: The Employment Channel Tells the Clearer Story</h3>
-    <p>
-      For the youngest cohort, the employment-to-self-employment pathway (blue) is the
-      more reliable signal. It has run consistently above 100 through the recent period,
-      meaning employed workers in this cohort are entering self-employment at a higher
-      rate than their historical average. That kind of persistent elevation, rather than
-      a one-time spike, is the hallmark of opportunity entrepreneurship: people who have
-      options choosing self-employment over continued wage work.
-    </p>
-    <p>
-      The unemployment-to-self-employment pathway (crimson) is much harder to read.
-      Because only a small number of unemployed workers appear in any given rotation
-      cohort in any given quarter, this rate bounces around dramatically even when
-      nothing has really changed. The swings you see in the crimson line are largely
-      a product of that small denominator, not evidence of a real surge in necessity
-      entrepreneurship. The overall picture is consistent with an opportunity story:
-      the steadier, higher-volume employment channel is what is moving, and it has
-      been above baseline for an extended stretch.
-    </p>
+    <figure class="figure">
+      <img src="figures/transition_pathway_unemp.png"
+           alt="Unemployment to self-employment transition rate by age group, 2x2 panels with historical band">
+      <figcaption>
+        <strong>Figure 2b. Unemployment to self-employment transition rate by age group, quarterly.</strong>
+        Each panel shows the share of unemployed workers entering self-employment the following month.
+        Shaded band is the 2005–2019 mean plus or minus one standard deviation.
+        Note the wider bands relative to Figure 2a: the unemployment pathway has a smaller
+        denominator in any given rotation cohort, making quarterly rates considerably noisier.
+        COVID era (2020–2022) shaded gray. Dotted line marks the start of the recent period (October 2023).
+        Source: U.S. Census Bureau &amp; BLS, Current Population Survey;
+        IPUMS CPS, University of Minnesota.
+      </figcaption>
+    </figure>
 
-    <h3>Age 55–64: The Opposite Pattern</h3>
+    <h3>The employment channel is the cleaner signal</h3>
     <p>
-      Older workers show the reverse: the unemployment-to-self-employment index remains
-      notably elevated post-COVID while the employment-to-self-employment channel has
-      mean-reverted. This is consistent with a necessity story, where older workers
-      displaced from jobs enter self-employment as an alternative to continued
-      unemployment.
+      The 20–34 age group has a lower base rate of transitioning from employment to
+      self-employment than older cohorts, which is not surprising given that older workers
+      tend to have more capital, professional networks, and industry experience to draw on.
+      What stands out is that the 20–34 rate has been running at or above the top of its
+      historical range for much of the post-COVID period. That kind of persistent
+      elevation is not visible in the same way for the 35–44, 45–54, or 55–64 groups,
+      which look broadly flat relative to their own historical ranges.
     </p>
-
-    <h3>Ages 35–54: Broad Mean Reversion</h3>
     <p>
-      Both pathways spiked during COVID for these cohorts and have largely returned
-      to baseline. No unusual post-COVID elevation in either channel.
+      The unemployment-to-self-employment channel is harder to read, for two reasons.
+      First, unemployment has remained low since 2022, which means there are fewer
+      unemployed workers in any given CPS rotation cohort to begin with. Fewer people
+      in the denominator means wider swings in the rate even when nothing fundamental
+      has changed. Second, the CPS rotation structure compounds this: only a fraction
+      of respondents are in their matched month in any given quarter, further shrinking
+      the pool. The wide historical bands in Figure 2b reflect both of these constraints.
+    </p>
+    <p>
+      With that caveat, the 55–64 panel is worth noting. It shows more post-COVID
+      activity above its historical range than the other groups -- a tentative pattern
+      that would be consistent with older workers displaced from jobs entering
+      self-employment as an alternative to continued unemployment. This is the opposite
+      of what we see for 20–34, and it is the kind of contrast that makes the
+      opportunity story for younger workers more credible: the two age groups appear
+      to be responding to different pressures. We hold this observation loosely given
+      the noise, but it is worth watching.
+    </p>
+    <p>
+      Taken together, the pattern is consistent with opportunity-driven entry among
+      younger workers: employed people with other options choosing self-employment,
+      not unemployed people falling back on it.
     </p>
   </section>
 
